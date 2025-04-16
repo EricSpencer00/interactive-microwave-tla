@@ -1,0 +1,35 @@
+name: Java Compiler and Linter
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+jobs:
+  build-and-lint:
+    runs-on: ubuntu-latest
+
+    steps:
+      # Step 1: Checkout the repository
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      # Step 2: Set up Java environment
+      - name: Set up JDK
+        uses: actions/setup-java@v3
+        with:
+          java-version: '17' # Use the desired Java version
+          distribution: 'temurin'
+
+      # Step 3: Compile Java code
+      - name: Compile Java code
+        run: |
+          mkdir -p build
+          javac -d build $(find . -name "*.java")
+
+      # Step 4: Run Checkstyle linter
+      - name: Run Checkstyle
+        run: |
+          curl -LJO https://github.com/checkstyle/checkstyle/releases/download/checkstyle-10.12.3/checkstyle-10.12.3-all.jar
+          java -jar checkstyle-10.12.3-all.jar -c /google_checks.xml $(find . -name "*.java")
