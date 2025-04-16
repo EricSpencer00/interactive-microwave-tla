@@ -8,29 +8,28 @@ import java.util.*;
 @Service
 public class TlaSpecService {
 
-    private final String JAR_PATH = "lib/tla2tools.jar"; // relative to project root or adjust if needed
+    // 🔧 Dynamically resolve tla2tools.jar relative to app root
+    private final String JAR_PATH = Paths.get("lib", "tla2tools.jar").toAbsolutePath().toString();
 
     public String runTLC(String tlaSpecCode, String cfgCode) {
         try {
-            // Create a temp folder
+            // ⏱️ Create temp dir for .tla and .cfg
             Path tempDir = Files.createTempDirectory("tla-run");
             File tlaFile = tempDir.resolve("MicrowaveSpec.tla").toFile();
             File cfgFile = tempDir.resolve("MicrowaveSpec.cfg").toFile();
 
-            // Write .tla
             try (FileWriter writer = new FileWriter(tlaFile)) {
                 writer.write(tlaSpecCode);
             }
-
-            // Write .cfg
             try (FileWriter writer = new FileWriter(cfgFile)) {
                 writer.write(cfgCode);
             }
 
-            // Build the TLC process
             List<String> command = Arrays.asList(
                 "java", "-cp", JAR_PATH, "tlc2.TLC", tlaFile.getAbsolutePath()
             );
+
+            System.out.println("Running: " + String.join(" ", command)); // 🪵 Debug
 
             ProcessBuilder pb = new ProcessBuilder(command);
             pb.directory(tempDir.toFile());
@@ -38,7 +37,6 @@ public class TlaSpecService {
 
             Process process = pb.start();
 
-            // Read the output
             BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
             StringBuilder output = new StringBuilder();
             String line;
