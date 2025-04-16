@@ -13,18 +13,18 @@ public class TlaTerminalView extends VerticalLayout {
         this.tlaSpecService = tlaSpecService;
         
         TextArea tlaInput = new TextArea("TLA+ Spec");
-        tlaInput.setWidth("800px");
-        tlaInput.setHeight("300px");
+        tlaInput.setWidth("100%");
+        tlaInput.setHeight("800px");
         tlaInput.setValue(loadDefaultSpec());
         
         TextArea cfgInput = new TextArea("Config File");
-        cfgInput.setWidth("800px");
-        cfgInput.setHeight("150px");
+        cfgInput.setWidth("100%");
+        cfgInput.setHeight("300px");
         cfgInput.setValue(loadDefaultCfg());
         
         TextArea result = new TextArea("TLC Output");
-        result.setWidth("800px");
-        result.setHeight("250px");
+        result.setWidth("100%");
+        result.setHeight("500px");
         result.setReadOnly(true);
         
         Button runChecker = new Button("Run TLC", e -> {
