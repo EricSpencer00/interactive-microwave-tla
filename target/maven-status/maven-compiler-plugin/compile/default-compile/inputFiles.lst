@@ -2,3 +2,6 @@
 /Users/ericspencer/Documents/GitHub/interactive-microwave-tla/src/main/java/com/example/microwave/fsm/MicrowaveFSM.java
 /Users/ericspencer/Documents/GitHub/interactive-microwave-tla/src/main/java/com/example/microwave/service/TlaSpecService.java
 /Users/ericspencer/Documents/GitHub/interactive-microwave-tla/src/main/java/com/example/microwave/ui/EditorView.java
+/Users/ericspencer/Documents/GitHub/interactive-microwave-tla/src/main/java/com/example/microwave/ui/MainView.java
+/Users/ericspencer/Documents/GitHub/interactive-microwave-tla/src/main/java/com/example/microwave/ui/MicrowaveControlView.java
+/Users/ericspencer/Documents/GitHub/interactive-microwave-tla/src/main/java/com/example/microwave/ui/TlaTerminalView.java

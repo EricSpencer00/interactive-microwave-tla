@@ -4,53 +4,108 @@ public class MicrowaveFSM {
     
     public enum State {
         IDLE,
-        DOOR_OPEN,
-        COOKING
+        COOKING,
+        PAUSED,
+        DOOR_OPEN
     }
     
-    private State currentState;
+    private State state;
+    private int timer; // timer in seconds
+    private boolean lightOn;
+    private boolean radiationOn;
     
     public MicrowaveFSM() {
-        currentState = State.IDLE;
+        state = State.IDLE;
+        timer = 0;
+        lightOn = false;
+        radiationOn = false;
     }
     
-    public State getCurrentState() {
-        return currentState;
+    public String openDoor() {
+        if (state == State.DOOR_OPEN) {
+            return "Door is already open.";
+        }
+        // Opening the door stops cooking and turns off radiation, but turns on light.
+        state = State.DOOR_OPEN;
+        radiationOn = false;
+        lightOn = true;
+        return "Door opened: Light is on, Radiation off.";
     }
     
-    // Simulate FSM transitions based on an action.
-    public String transition(String action) {
-        switch (action) {
-            case "openDoor":
-                if (currentState == State.IDLE || currentState == State.COOKING) {
-                    currentState = State.DOOR_OPEN;
-                    return "Door opened";
-                } else {
-                    return "Invalid transition: door already open";
-                }
-            case "closeDoor":
-                if (currentState == State.DOOR_OPEN) {
-                    currentState = State.IDLE;
-                    return "Door closed";
-                } else {
-                    return "Invalid transition: door already closed";
-                }
-            case "startCooking":
-                if (currentState == State.IDLE) {
-                    currentState = State.COOKING;
-                    return "Cooking started";
-                } else {
-                    return "Invalid transition: cannot start cooking in current state";
-                }
-            case "stopCooking":
-                if (currentState == State.COOKING) {
-                    currentState = State.IDLE;
-                    return "Cooking stopped";
-                } else {
-                    return "Invalid transition: not currently cooking";
-                }
-            default:
-                return "Unknown action";
+    public String closeDoor() {
+        if (state != State.DOOR_OPEN) {
+            return "Door is already closed.";
+        }
+        // Closing the door: if there is a pending timer value, state becomes PAUSED.
+        lightOn = false;
+        if (timer > 0) {
+            state = State.PAUSED;
+            return "Door closed: Timer is paused.";
+        } else {
+            state = State.IDLE;
+            return "Door closed: Microwave is idle.";
         }
     }
+    
+    public String addTime(int seconds) {
+        timer += seconds;
+        return "Added " + seconds + " seconds. Timer is now " + timer + " seconds.";
+    }
+    
+    public String startCooking() {
+        if (state == State.DOOR_OPEN) {
+            return "Cannot start cooking: Door is open.";
+        }
+        if (timer <= 0) {
+            return "No time on the clock. Please add time.";
+        }
+        state = State.COOKING;
+        radiationOn = true;
+        lightOn = false;
+        return "Cooking started: Radiation on.";
+    }
+    
+    public String stopClock() {
+        if (state != State.COOKING) {
+            return "Microwave is not actively cooking.";
+        }
+        state = State.PAUSED;
+        radiationOn = false;
+        return "Cooking paused: Radiation off.";
+    }
+    
+    public String resetClock() {
+        timer = 0;
+        if (state == State.COOKING || state == State.PAUSED) {
+            state = State.IDLE;
+            radiationOn = false;
+        }
+        return "Timer reset. Microwave is idle.";
+    }
+    
+    // Simulate one tick (one second decrement) if cooking.
+    public String tick() {
+        if (state == State.COOKING) {
+            if (timer > 0) {
+                timer--;
+                if (timer == 0) {
+                    state = State.IDLE;
+                    radiationOn = false;
+                    return "Timer finished: BEEP! Cooking complete.";
+                }
+                return "Tick: Timer is now " + timer + " seconds.";
+            } else {
+                state = State.IDLE;
+                radiationOn = false;
+                return "Timer finished: BEEP! Cooking complete.";
+            }
+        }
+        return "No active cooking. Timer remains " + timer + " seconds.";
+    }
+    
+    // Getters for UI display:
+    public State getState() { return state; }
+    public int getTimer() { return timer; }
+    public boolean isLightOn() { return lightOn; }
+    public boolean isRadiationOn() { return radiationOn; }
 }
