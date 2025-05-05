@@ -3,9 +3,10 @@ package com.example.microwave.ui;
 import com.example.microwave.fsm.MicrowaveFSM;
 import com.example.microwave.service.TlaSpecService;
 import com.vaadin.flow.component.button.Button;
-import com.vaadin.flow.component.textfield.NumberField;
-import com.vaadin.flow.component.orderedlayout.VerticalLayout;
+import com.vaadin.flow.component.html.Div;
 import com.vaadin.flow.component.html.Span;
+import com.vaadin.flow.component.orderedlayout.VerticalLayout;
+import com.vaadin.flow.component.textfield.NumberField;
 
 public class MicrowaveControlView extends VerticalLayout {
     
@@ -114,9 +115,18 @@ public class MicrowaveControlView extends VerticalLayout {
             updateDisplays();
         });
         
+        // Create a div for the microwave image and controls
+        Div microwaveDiv = new Div();
+        microwaveDiv.addClassName("microwave");
+        Div doorDiv = new Div();
+        doorDiv.addClassName("microwave-door");
+        Div controlsDiv = new Div();
+        controlsDiv.addClassName("microwave-controls");
+        microwaveDiv.add(doorDiv, controlsDiv);
+        
         add(stateDisplay, timerDisplay, lightDisplay, radiationDisplay, messageDisplay, tlaValidationDisplay,
             toggleDoorButton, startCookingButton, addTimeButton, customTimeField, addCustomTimeButton,
-            stopClockButton, resetClockButton, tickButton);
+            stopClockButton, resetClockButton, tickButton, microwaveDiv);
         
         updateDisplays();
     }
