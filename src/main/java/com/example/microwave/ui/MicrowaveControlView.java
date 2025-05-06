@@ -12,6 +12,8 @@ import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.component.UI;
 import java.util.Timer;
 import java.util.TimerTask;
+import java.util.ArrayList;
+import java.util.List;
 
 public class MicrowaveControlView extends HorizontalLayout {
     private final MicrowaveFSM microwaveFSM;
@@ -30,6 +32,8 @@ public class MicrowaveControlView extends HorizontalLayout {
     private Div timerDisplayBox;
     private Div lightIndicator;
     private Div[] radiationWaves = new Div[3];
+
+    private List<MicrowaveTraceEntry> trace = new ArrayList<>();
 
     public MicrowaveControlView(TlaSpecService tlaSpecService) {
         this.tlaSpecService = tlaSpecService;
@@ -84,6 +88,20 @@ public class MicrowaveControlView extends HorizontalLayout {
         });
         statusLayout.add(messageDisplay, tlaValidationDisplay, expandLink, fullTlaOutput);
         add(statusLayout);
+
+        // Add Verify Trace button below the microwave
+        Button verifyTraceBtn = new Button("Verify Trace", e -> verifyTrace());
+        verifyTraceBtn.getStyle().set("background", "#ff9800");
+        verifyTraceBtn.getStyle().set("color", "white");
+        verifyTraceBtn.getStyle().set("fontWeight", "bold");
+        verifyTraceBtn.getStyle().set("border", "none");
+        verifyTraceBtn.getStyle().set("borderRadius", "4px");
+        verifyTraceBtn.getStyle().set("boxShadow", "0 1px 4px #ff980033");
+        verifyTraceBtn.getStyle().set("width", "160px");
+        verifyTraceBtn.getStyle().set("height", "40px");
+        verifyTraceBtn.getStyle().set("fontSize", "1.1rem");
+        add(verifyTraceBtn);
+
         updateGraphic();
     }
 
@@ -234,6 +252,8 @@ public class MicrowaveControlView extends HorizontalLayout {
     }
 
     private void handleAction(String tlaAction, String msg) {
+        // Record trace entry
+        trace.add(new MicrowaveTraceEntry(microwaveFSM.getState().name(), microwaveFSM.getTimer(), tlaAction));
         messageDisplay.setText(msg);
         String out = tlaSpecService.validateTransition(tlaAction, microwaveFSM);
         lastTlaFullOutput = out;
@@ -302,6 +322,46 @@ public class MicrowaveControlView extends HorizontalLayout {
         boolean radiationOn = (microwaveFSM.getState() == MicrowaveFSM.State.COOKING);
         for (Div wave : radiationWaves) {
             wave.setVisible(radiationOn);
+        }
+    }
+
+    private void verifyTrace() {
+        // Export trace as TLA+ sequence
+        String tlaTrace = exportTraceAsTLA();
+        // Generate composed TLA+ spec
+        String composedSpec = generateComposedTlaSpec(tlaTrace);
+        // Run TLC on composed spec
+        String result = tlaSpecService.runTLC(composedSpec, "");
+        // Show result in the UI
+        fullTlaOutput.setVisible(true);
+        fullTlaOutput.setText(result);
+    }
+
+    private String exportTraceAsTLA() {
+        StringBuilder sb = new StringBuilder();
+        sb.append("Trace == <<\n");
+        for (MicrowaveTraceEntry entry : trace) {
+            sb.append(String.format("  [state |-> \"%s\", timer |-> %d, action |-> \"%s\"],\n", entry.state, entry.timer, entry.action));
+        }
+        sb.append(">>\n");
+        return sb.toString();
+    }
+
+    private String generateComposedTlaSpec(String tlaTrace) {
+        // This is a simplified version. In a real implementation, you would compose the trace and the spec as in the paper.
+        // For now, just append the trace to the spec for demonstration.
+        String baseSpec = tlaSpecService.loadDefaultSpec();
+        return baseSpec + "\n" + tlaTrace;
+    }
+
+    private static class MicrowaveTraceEntry {
+        String state;
+        int timer;
+        String action;
+        MicrowaveTraceEntry(String state, int timer, String action) {
+            this.state = state;
+            this.timer = timer;
+            this.action = action;
         }
     }
 }
