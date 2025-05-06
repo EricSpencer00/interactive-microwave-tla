@@ -27,6 +27,10 @@ public class MicrowaveControlView extends HorizontalLayout {
     private boolean tlaExpanded = false;
     private Timer autoTickTimer;
 
+    private Div timerDisplayBox;
+    private Div lightIndicator;
+    private Div[] radiationWaves = new Div[3];
+
     public MicrowaveControlView(TlaSpecService tlaSpecService) {
         this.tlaSpecService = tlaSpecService;
         this.microwaveFSM = new MicrowaveFSM();
@@ -96,6 +100,25 @@ public class MicrowaveControlView extends HorizontalLayout {
         container.getStyle().set("borderRadius", "12px");
         container.getStyle().set("boxShadow", "0 4px 24px #ff980033");
 
+        // Timer display (on box, above button panel)
+        timerDisplayBox = new Div();
+        timerDisplayBox.getStyle().set("position", "absolute");
+        timerDisplayBox.getStyle().set("top", "18px");
+        timerDisplayBox.getStyle().set("right", "50px");
+        timerDisplayBox.getStyle().set("width", "80px");
+        timerDisplayBox.getStyle().set("height", "36px");
+        timerDisplayBox.getStyle().set("background", "#222");
+        timerDisplayBox.getStyle().set("color", "#fff");
+        timerDisplayBox.getStyle().set("display", "flex");
+        timerDisplayBox.getStyle().set("alignItems", "center");
+        timerDisplayBox.getStyle().set("justifyContent", "center");
+        timerDisplayBox.getStyle().set("fontWeight", "bold");
+        timerDisplayBox.getStyle().set("fontSize", "1.5rem");
+        timerDisplayBox.getStyle().set("borderRadius", "8px");
+        timerDisplayBox.getStyle().set("boxShadow", "0 1px 6px #0002");
+        timerDisplayBox.setText("00:00");
+        container.add(timerDisplayBox);
+
         // Door
         int doorWidth = (int)(mwWidth * 0.55); // 220px
         int doorHeight = (int)(mwHeight * 0.82); // 180px
@@ -123,25 +146,43 @@ public class MicrowaveControlView extends HorizontalLayout {
         food.getStyle().set("boxShadow", "0 2px 8px #ff980055");
         food.setId("food-item");
         doorDiv.add(food);
-
-        // Timer display
-        Span display = new Span();
-        display.getStyle().set("position", "absolute");
-        display.getStyle().set("top", (int)(doorHeight*0.17) + "px"); // 30px
-        display.getStyle().set("left", (int)(doorWidth*0.18) + "px"); // 40px
-        display.getStyle().set("fontWeight", "bold");
-        display.getStyle().set("fontSize", "1.5rem");
-        display.getClassNames().add("timer-display");
-        doorDiv.add(display);
-
         container.add(doorDiv);
 
-        // Button panel (inside microwave, right side)
+        // Light indicator (yellow circle, inside microwave, visible when door is open)
+        lightIndicator = new Div();
+        lightIndicator.getStyle().set("position", "absolute");
+        lightIndicator.getStyle().set("top", (int)(mwHeight*0.18) + "px");
+        lightIndicator.getStyle().set("left", (int)(mwWidth*0.18) + "px");
+        lightIndicator.getStyle().set("width", "36px");
+        lightIndicator.getStyle().set("height", "36px");
+        lightIndicator.getStyle().set("background", "radial-gradient(circle, #ffe066 60%, #ffeb3b 100%)");
+        lightIndicator.getStyle().set("borderRadius", "50%");
+        lightIndicator.getStyle().set("boxShadow", "0 0 24px 8px #ffe06699");
+        lightIndicator.setVisible(false);
+        container.add(lightIndicator);
+
+        // Radiation waves (3 orange waves, visible when cooking)
+        for (int i = 0; i < 3; i++) {
+            Div wave = new Div();
+            wave.getStyle().set("position", "absolute");
+            wave.getStyle().set("top", (int)(mwHeight*0.35 + i*18) + "px");
+            wave.getStyle().set("left", (int)(mwWidth*0.23 + i*10) + "px");
+            wave.getStyle().set("width", "36px");
+            wave.getStyle().set("height", "16px");
+            wave.getStyle().set("borderRadius", "50% 50% 50% 50% / 60% 60% 40% 40%");
+            wave.getStyle().set("background", "linear-gradient(90deg, #ff9800 60%, #fff0 100%)");
+            wave.getStyle().set("opacity", "0.85");
+            wave.setVisible(false);
+            container.add(wave);
+            radiationWaves[i] = wave;
+        }
+
+        // Button panel (inside microwave, right side, below timer)
         Div panel = new Div();
         int panelWidth = (int)(mwWidth * 0.3); // 120px
         int panelHeight = (int)(mwHeight * 0.73); // 160px
         panel.getStyle().set("position", "absolute");
-        panel.getStyle().set("top", (int)(mwHeight*0.14) + "px"); // 30px
+        panel.getStyle().set("top", (int)(mwHeight*0.32) + "px"); // moved down to fit timer
         panel.getStyle().set("right", (int)(mwWidth*0.075) + "px"); // 30px
         panel.getStyle().set("width", panelWidth + "px");
         panel.getStyle().set("height", panelHeight + "px");
@@ -245,16 +286,22 @@ public class MicrowaveControlView extends HorizontalLayout {
             doorDiv.getStyle().set("transform", "rotateY(135deg)");
             // Show food when door is open
             doorDiv.getChildren().filter(c -> "food-item".equals(c.getId().orElse(""))).findFirst().ifPresent(f -> f.setVisible(true));
+            // Show light
+            lightIndicator.setVisible(true);
         } else {
             doorDiv.getStyle().set("transform", "none");
             // Hide food when door is closed
             doorDiv.getChildren().filter(c -> "food-item".equals(c.getId().orElse(""))).findFirst().ifPresent(f -> f.setVisible(false));
+            // Hide light
+            lightIndicator.setVisible(false);
         }
-        // update timer text
-        Span disp = (Span) doorDiv.getChildren()
-            .filter(c -> c.getClassNames().contains("timer-display"))
-            .findFirst().get();
+        // update timer text (on box)
         int t = microwaveFSM.getTimer();
-        disp.setText(String.format("%02d:%02d", t/60, t%60));
+        timerDisplayBox.setText(String.format("%02d:%02d", t/60, t%60));
+        // Radiation waves
+        boolean radiationOn = (microwaveFSM.getState() == MicrowaveFSM.State.COOKING);
+        for (Div wave : radiationWaves) {
+            wave.setVisible(radiationOn);
+        }
     }
 }
