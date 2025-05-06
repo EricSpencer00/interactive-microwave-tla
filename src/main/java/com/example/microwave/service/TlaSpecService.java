@@ -1,16 +1,28 @@
 package com.example.microwave.service;
 
-import com.example.microwave.fsm.MicrowaveFSM;
-import java.io.*;
-import java.nio.file.*;
-import java.util.*;
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
+import java.util.Arrays;
+import java.util.List;
+
 import org.springframework.stereotype.Service;
+
+import com.example.microwave.fsm.MicrowaveFSM;
 
 @Service
 public class TlaSpecService {
 
     // Relative path to the bundled tla2tools.jar (resolved as absolute at runtime)
     private final String JAR_PATH = Paths.get("lib", "tla2tools.jar").toAbsolutePath().toString();
+    private static final String TLA_SPEC_PATH = "src/main/resources/MicrowaveSpec.tla";
+    private static final String TLA_TOOLS_PATH = "lib/tla2tools.jar";
 
     public String runTLC(String tlaSpecCode, String cfgCode) {
         try {
@@ -220,18 +232,44 @@ public class TlaSpecService {
     
     // Validate a given transition (action) by generating a modified spec with the current FSM state.
     public String validateTransition(String action, MicrowaveFSM fsm) {
-        // Get the default spec.
-        String defaultSpec = loadDefaultSpec();
-        // Generate the overridden clauses.
-        String initClause = generateFSMInitClause(fsm);
-        String nextClause = generateOverriddenNextClause(action);
-        // Assemble a modified spec that overrides Init and Next.
-        // We add definitions for OverriddenInit and OverriddenNext and then define OverriddenSpec.
-        String modifiedSpec = defaultSpec + "\n" +
-                              initClause + "\n" +
-                              nextClause + "\n" +
-                              "OverriddenSpec == OverriddenInit /\\ [][OverriddenNext]_vars\n";
-        // Run TLC on the modified spec using the default CFG.
-        return runTLC(modifiedSpec, loadDefaultCfg());
+        try {
+            // Create temporary directory for TLA files
+            Path tempDir = Files.createTempDirectory("tla-run");
+            Path specFile = tempDir.resolve("MicrowaveSpec.tla");
+            
+            // Copy the TLA spec file to temp directory
+            Files.copy(new File(TLA_SPEC_PATH).toPath(), specFile, StandardCopyOption.REPLACE_EXISTING);
+            
+            // Build the command to run TLC
+            ProcessBuilder pb = new ProcessBuilder(
+                "java", "-cp", TLA_TOOLS_PATH,
+                "tlc2.TLC",
+                specFile.toString()
+            );
+            
+            // Start the process
+            Process process = pb.start();
+            
+            // Read the output
+            StringBuilder output = new StringBuilder();
+            try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    output.append(line).append("\n");
+                }
+            }
+            
+            // Wait for the process to complete
+            int exitCode = process.waitFor();
+            
+            // Clean up
+            Files.deleteIfExists(specFile);
+            Files.deleteIfExists(tempDir);
+            
+            return output.toString();
+            
+        } catch (Exception e) {
+            return "Error running TLA validation: " + e.getMessage();
+        }
     }
 }

@@ -3,128 +3,142 @@ package com.example.microwave.ui;
 import com.example.microwave.fsm.MicrowaveFSM;
 import com.example.microwave.service.TlaSpecService;
 import com.vaadin.flow.component.button.Button;
-import com.vaadin.flow.component.textfield.NumberField;
-import com.vaadin.flow.component.orderedlayout.VerticalLayout;
+import com.vaadin.flow.component.html.Div;
 import com.vaadin.flow.component.html.Span;
+import com.vaadin.flow.component.orderedlayout.FlexComponent.Alignment;
+import com.vaadin.flow.component.orderedlayout.FlexComponent.JustifyContentMode;
+import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 
-public class MicrowaveControlView extends VerticalLayout {
-    
-    private MicrowaveFSM microwaveFSM;
-    private TlaSpecService tlaSpecService;
-    
-    private Span stateDisplay;
-    private Span timerDisplay;
-    private Span lightDisplay;
-    private Span radiationDisplay;
-    private Span messageDisplay;
-    private Span tlaValidationDisplay;
-    
+public class MicrowaveControlView extends HorizontalLayout {
+    private final MicrowaveFSM microwaveFSM;
+    private final TlaSpecService tlaSpecService;
+
+    private final Div microwaveDiv;
+    private final Div doorDiv = new Div();
+    private final Div controlsDiv;
+    private final Span messageDisplay;
+    private final Span tlaValidationDisplay;
+
     public MicrowaveControlView(TlaSpecService tlaSpecService) {
         this.tlaSpecService = tlaSpecService;
-        microwaveFSM = new MicrowaveFSM();
-        
-        stateDisplay = new Span("State: " + microwaveFSM.getState());
-        timerDisplay = new Span("Timer: " + microwaveFSM.getTimer() + " sec");
-        lightDisplay = new Span("Light: " + (microwaveFSM.isLightOn() ? "On" : "Off"));
-        radiationDisplay = new Span("Radiation: " + (microwaveFSM.isRadiationOn() ? "On" : "Off"));
-        messageDisplay = new Span("");
+        this.microwaveFSM = new MicrowaveFSM();
+
+        setWidthFull();
+        setAlignItems(Alignment.CENTER);
+        setJustifyContentMode(JustifyContentMode.CENTER);
+
+        // Left: graphical microwave
+        microwaveDiv = buildMicrowaveGraphic();
+
+        // Right: controls and status
+        controlsDiv = new Div();
+        controlsDiv.getStyle().set("display", "flex");
+        controlsDiv.getStyle().set("flexDirection", "column");
+        controlsDiv.getStyle().set("padding", "1rem");
+        controlsDiv.getStyle().set("gap", "0.5rem");
+
+        Button openCloseBtn = new Button("Toggle Door", e -> handleAction(
+            microwaveFSM.getState() == MicrowaveFSM.State.DOOR_OPEN ? "CloseDoor" : "OpenDoor",
+            microwaveFSM.getState() == MicrowaveFSM.State.DOOR_OPEN ? microwaveFSM.closeDoor() : microwaveFSM.openDoor()
+        ));
+        Button add10Btn = new Button("+10s", e -> handleAction(
+            "IncTime", microwaveFSM.addTime(10)
+        ));
+        Button startBtn = new Button("Start", e -> handleAction(
+            "Start", microwaveFSM.startCooking()
+        ));
+        Button stopBtn = new Button("Pause", e -> handleAction(
+            "Pause", microwaveFSM.stopClock()
+        ));
+        Button tickBtn = new Button("Tick", e -> handleAction(
+            "Tick", microwaveFSM.tick()
+        ));
+        Button resetBtn = new Button("Reset", e -> handleAction(
+            "Cancel", microwaveFSM.resetClock()
+        ));
+
+        messageDisplay = new Span();
         tlaValidationDisplay = new Span("TLA Check: (waiting...)");
-        
-        // Create buttons; note that the associated TLA action name is passed to the validator.
-        Button toggleDoorButton = new Button("Toggle Door", e -> {
-            String tlaAction;
-            if (microwaveFSM.getState() == MicrowaveFSM.State.DOOR_OPEN) {
-                // Attempt to close the door; assume action name is CloseDoor.
-                tlaAction = "CloseDoor";
-                String msg = microwaveFSM.closeDoor();
-                messageDisplay.setText(msg);
-            } else {
-                // Attempt to open the door; action name: OpenDoor.
-                tlaAction = "OpenDoor";
-                String msg = microwaveFSM.openDoor();
-                messageDisplay.setText(msg);
-            }
-            // Validate the attempted transition with TLC.
-            String tlaOutput = tlaSpecService.validateTransition(tlaAction, microwaveFSM);
-            tlaValidationDisplay.setText("TLA Check:\n" + tlaOutput);
-            updateDisplays();
-        });
-        
-        Button startCookingButton = new Button("Start Cooking", e -> {
-            String tlaAction = "Start";
-            String msg = microwaveFSM.startCooking();
-            messageDisplay.setText(msg);
-            String tlaOutput = tlaSpecService.validateTransition(tlaAction, microwaveFSM);
-            tlaValidationDisplay.setText("TLA Check:\n" + tlaOutput);
-            updateDisplays();
-        });
-        
-        Button addTimeButton = new Button("Add 3 sec", e -> {
-            String tlaAction = "IncTime";  // For this simple integration we assume add time uses IncTime.
-            String msg = microwaveFSM.addTime(3);
-            messageDisplay.setText(msg);
-            String tlaOutput = tlaSpecService.validateTransition(tlaAction, microwaveFSM);
-            tlaValidationDisplay.setText("TLA Check:\n" + tlaOutput);
-            updateDisplays();
-        });
-        
-        NumberField customTimeField = new NumberField("Add Custom Time (sec)");
-        customTimeField.setPlaceholder("Enter seconds");
-        Button addCustomTimeButton = new Button("Add Custom Time", e -> {
-            Double val = customTimeField.getValue();
-            if (val != null) {
-                String tlaAction = "IncTime";
-                String msg = microwaveFSM.addTime(val.intValue());
-                messageDisplay.setText(msg);
-                String tlaOutput = tlaSpecService.validateTransition(tlaAction, microwaveFSM);
-                tlaValidationDisplay.setText("TLA Check:\n" + tlaOutput);
-                updateDisplays();
-            } else {
-                messageDisplay.setText("Please enter a valid time.");
-            }
-        });
-        
-        Button stopClockButton = new Button("Stop Clock", e -> {
-            // Here we assume stopping the clock corresponds to a Cancel action.
-            String tlaAction = "Cancel";
-            String msg = microwaveFSM.stopClock();
-            messageDisplay.setText(msg);
-            String tlaOutput = tlaSpecService.validateTransition(tlaAction, microwaveFSM);
-            tlaValidationDisplay.setText("TLA Check:\n" + tlaOutput);
-            updateDisplays();
-        });
-        
-        Button resetClockButton = new Button("Reset Clock", e -> {
-            // Reset could be considered Cancel as well.
-            String tlaAction = "Cancel";
-            String msg = microwaveFSM.resetClock();
-            messageDisplay.setText(msg);
-            String tlaOutput = tlaSpecService.validateTransition(tlaAction, microwaveFSM);
-            tlaValidationDisplay.setText("TLA Check:\n" + tlaOutput);
-            updateDisplays();
-        });
-        
-        Button tickButton = new Button("Tick", e -> {
-            // Tick represents a time decrement.
-            String tlaAction = "Tick";
-            String msg = microwaveFSM.tick();
-            messageDisplay.setText(msg);
-            String tlaOutput = tlaSpecService.validateTransition(tlaAction, microwaveFSM);
-            tlaValidationDisplay.setText("TLA Check:\n" + tlaOutput);
-            updateDisplays();
-        });
-        
-        add(stateDisplay, timerDisplay, lightDisplay, radiationDisplay, messageDisplay, tlaValidationDisplay,
-            toggleDoorButton, startCookingButton, addTimeButton, customTimeField, addCustomTimeButton,
-            stopClockButton, resetClockButton, tickButton);
-        
-        updateDisplays();
+        tlaValidationDisplay.getStyle().set("white-space", "pre-wrap");
+        tlaValidationDisplay.getStyle().set("marginTop", "1rem");
+
+        controlsDiv.add(openCloseBtn, add10Btn, startBtn, stopBtn, tickBtn, resetBtn,
+            messageDisplay, tlaValidationDisplay);
+
+        add(microwaveDiv, controlsDiv);
+        updateGraphic();
     }
-    
-    private void updateDisplays() {
-        stateDisplay.setText("State: " + microwaveFSM.getState());
-        timerDisplay.setText("Timer: " + microwaveFSM.getTimer() + " sec");
-        lightDisplay.setText("Light: " + (microwaveFSM.isLightOn() ? "On" : "Off"));
-        radiationDisplay.setText("Radiation: " + (microwaveFSM.isRadiationOn() ? "On" : "Off"));
+
+    private Div buildMicrowaveGraphic() {
+        Div container = new Div();
+        container.getStyle().set("position", "relative");
+        container.getStyle().set("width", "400px");
+        container.getStyle().set("height", "220px");
+        container.getStyle().set("background", "#f0f0f0");
+        container.getStyle().set("border", "2px solid #ccc");
+        container.getStyle().set("borderRadius", "8px");
+
+        doorDiv.getStyle().set("width", "220px");
+        doorDiv.getStyle().set("height", "180px");
+        doorDiv.getStyle().set("background", "#e0e0e0");
+        doorDiv.getStyle().set("border", "2px solid #aaa");
+        doorDiv.getStyle().set("borderRadius", "6px");
+        doorDiv.getStyle().set("position", "absolute");
+        doorDiv.getStyle().set("top", "20px");
+        doorDiv.getStyle().set("left", "20px");
+        doorDiv.getStyle().set("transition", "transform 0.4s");
+
+        Span display = new Span();
+        display.getStyle().set("position", "absolute");
+        display.getStyle().set("top", "30px");
+        display.getStyle().set("left", "40px");
+        display.getClassNames().add("timer-display");
+        doorDiv.add(display);
+
+        container.add(doorDiv);
+        return container;
+    }
+
+    private void handleAction(String tlaAction, String msg) {
+        messageDisplay.setText(msg);
+        String out = tlaSpecService.validateTransition(tlaAction, microwaveFSM);
+        
+        // Format TLA output to be more concise
+        String[] lines = out.split("\n");
+        StringBuilder formattedOutput = new StringBuilder();
+        
+        // Add the action message
+        formattedOutput.append(msg).append("\n\n");
+        
+        // Add TLA Check header
+        formattedOutput.append("TLA Check:\n");
+        
+        // Extract and format the key information
+        for (String line : lines) {
+            if (line.contains("states generated") || 
+                line.contains("distinct states found") ||
+                line.contains("depth of the complete state graph") ||
+                line.contains("Finished in")) {
+                formattedOutput.append(line).append("\n");
+            }
+        }
+        
+        tlaValidationDisplay.setText(formattedOutput.toString());
+        updateGraphic();
+    }
+
+    private void updateGraphic() {
+        // door angle
+        if (microwaveFSM.getState() == MicrowaveFSM.State.DOOR_OPEN) {
+            doorDiv.getStyle().set("transform", "rotateY(-60deg)");
+        } else {
+            doorDiv.getStyle().remove("transform");
+        }
+        // update timer text
+        Span disp = (Span) doorDiv.getChildren()
+            .filter(c -> c.getClassNames().contains("timer-display"))
+            .findFirst().get();
+        int t = microwaveFSM.getTimer();
+        disp.setText(String.format("%02d:%02d", t/60, t%60));
     }
 }

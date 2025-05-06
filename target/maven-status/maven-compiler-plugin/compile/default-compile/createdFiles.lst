@@ -3,5 +3,3 @@ com/example/microwave/Application.class
 com/example/microwave/service/TlaSpecService.class
 com/example/microwave/ui/TlaTerminalView.class
 com/example/microwave/fsm/MicrowaveFSM$State.class
-com/example/microwave/ui/MicrowaveControlView.class
-com/example/microwave/ui/MainView.class
