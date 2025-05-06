@@ -1,0 +1,13 @@
+{
+  "lumoImports": [
+    "typography",
+    "color",
+    "spacing",
+    "badge",
+    "utility"
+  ],
+  "parent": "lumo",
+  "assets": {
+    "logo": "images/logo.png"
+  }
+} 

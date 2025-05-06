@@ -1,3 +1,53 @@
 *.env
 build
 /flattened
+
+# Maven
+target/
+pom.xml.tag
+pom.xml.releaseBackup
+pom.xml.versionsBackup
+pom.xml.next
+release.properties
+dependency-reduced-pom.xml
+buildNumber.properties
+.mvn/timing.properties
+.mvn/wrapper/maven-wrapper.jar
+
+# Vaadin
+node_modules/
+frontend/generated/
+package.json
+package-lock.json
+webpack.config.js
+webpack.generated.js
+tsconfig.json
+types.d.ts
+.vaadin/
+
+# IDE files
+.idea/
+*.iml
+*.iws
+*.ipr
+.settings/
+.project
+.classpath
+.factorypath
+.vscode/
+
+# Compiled files
+*.class
+*.jar
+*.war
+*.ear
+*.log
+
+# OS-specific files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
