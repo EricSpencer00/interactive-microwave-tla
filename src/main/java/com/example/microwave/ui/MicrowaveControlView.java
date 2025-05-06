@@ -9,6 +9,9 @@ import com.vaadin.flow.component.orderedlayout.FlexComponent.Alignment;
 import com.vaadin.flow.component.orderedlayout.FlexComponent.JustifyContentMode;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
+import com.vaadin.flow.component.UI;
+import java.util.Timer;
+import java.util.TimerTask;
 
 public class MicrowaveControlView extends HorizontalLayout {
     private final MicrowaveFSM microwaveFSM;
@@ -18,13 +21,16 @@ public class MicrowaveControlView extends HorizontalLayout {
     private final Div doorDiv = new Div();
     private Span messageDisplay;
     private Span tlaValidationDisplay;
+    private Span fullTlaOutput;
 
     private String lastTlaFullOutput = "";
     private boolean tlaExpanded = false;
+    private Timer autoTickTimer;
 
     public MicrowaveControlView(TlaSpecService tlaSpecService) {
         this.tlaSpecService = tlaSpecService;
         this.microwaveFSM = new MicrowaveFSM();
+        this.autoTickTimer = null;
 
         setWidthFull();
         setAlignItems(Alignment.CENTER);
@@ -59,7 +65,7 @@ public class MicrowaveControlView extends HorizontalLayout {
         expandLink.getStyle().set("color", "#ff9800");
         expandLink.getStyle().set("cursor", "pointer");
         expandLink.getStyle().set("marginLeft", "0.5rem");
-        Span fullTlaOutput = new Span();
+        fullTlaOutput = new Span();
         fullTlaOutput.setVisible(false);
         fullTlaOutput.getStyle().set("white-space", "pre-wrap");
         fullTlaOutput.getStyle().set("background", "#fff3e0");
@@ -151,7 +157,7 @@ public class MicrowaveControlView extends HorizontalLayout {
         // Button sizes as a ratio of panel
         int btnWidth = (int)(panelWidth * 0.75); // 90px
         int btnHeight = (int)(panelHeight * 0.15); // 24px
-        Button openCloseBtn = new Button("Toggle Door", e -> handleAction(
+        Button openCloseBtn = new Button("Door", e -> handleAction(
             microwaveFSM.getState() == MicrowaveFSM.State.DOOR_OPEN ? "CloseDoor" : "OpenDoor",
             microwaveFSM.getState() == MicrowaveFSM.State.DOOR_OPEN ? microwaveFSM.closeDoor() : microwaveFSM.openDoor()
         ));
@@ -204,15 +210,39 @@ public class MicrowaveControlView extends HorizontalLayout {
         }
         tlaValidationDisplay.setText(formattedOutput.toString());
         // Update full output if expanded
-        Span fullTlaOutput = (Span) ((VerticalLayout) ((Div) microwaveDiv).getChildren().filter(c -> c instanceof VerticalLayout).findFirst().get()).getComponentAt(3);
         fullTlaOutput.setText(lastTlaFullOutput);
         updateGraphic();
+        handleAutoTick();
+    }
+
+    private void handleAutoTick() {
+        // Cancel any previous timer
+        if (autoTickTimer != null) {
+            autoTickTimer.cancel();
+            autoTickTimer = null;
+        }
+        // If cooking, start a new timer
+        if (microwaveFSM.getState() == MicrowaveFSM.State.COOKING && microwaveFSM.getTimer() > 0) {
+            autoTickTimer = new Timer();
+            autoTickTimer.scheduleAtFixedRate(new TimerTask() {
+                @Override
+                public void run() {
+                    UI.getCurrent().access(() -> {
+                        if (microwaveFSM.getState() == MicrowaveFSM.State.COOKING && microwaveFSM.getTimer() > 0) {
+                            handleAction("Tick", microwaveFSM.tick());
+                        } else {
+                            autoTickTimer.cancel();
+                        }
+                    });
+                }
+            }, 1000, 1000);
+        }
     }
 
     private void updateGraphic() {
-        // door angle
+        // door angle and width
         if (microwaveFSM.getState() == MicrowaveFSM.State.DOOR_OPEN) {
-            doorDiv.getStyle().set("transform", "rotateY(-80deg)");
+            doorDiv.getStyle().set("transform", "rotateY(135deg)");
             // Show food when door is open
             doorDiv.getChildren().filter(c -> "food-item".equals(c.getId().orElse(""))).findFirst().ifPresent(f -> f.setVisible(true));
         } else {
