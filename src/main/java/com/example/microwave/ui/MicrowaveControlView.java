@@ -4,11 +4,8 @@ import com.example.microwave.fsm.MicrowaveFSM;
 import com.example.microwave.service.TlaSpecService;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.html.Div;
-import com.vaadin.flow.component.html.Label;
 import com.vaadin.flow.component.html.Span;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
-import com.vaadin.flow.component.textfield.NumberField;
-import com.vaadin.flow.component.notification.Notification;
 
 public class MicrowaveControlView extends VerticalLayout {
     
@@ -29,7 +26,7 @@ public class MicrowaveControlView extends VerticalLayout {
     private Div lightDiv;
     private Div cookingDiv;
     private Div controlsDiv;
-    private Label timerLabel;
+    private Span timerLabel;
     
     public MicrowaveControlView(TlaSpecService tlaSpecService) {
         this.tlaSpecService = tlaSpecService;
@@ -112,7 +109,7 @@ public class MicrowaveControlView extends VerticalLayout {
         displayDiv.getStyle().set("position", "absolute");
         displayDiv.getStyle().set("top", "20px");
         displayDiv.getStyle().set("left", "60px");
-        timerLabel = new Label();
+        timerLabel = new Span();
         displayDiv.add(timerLabel);
         doorDiv.add(displayDiv);
 
@@ -174,7 +171,7 @@ public class MicrowaveControlView extends VerticalLayout {
         });
         Button stopClockButton = new Button("Stop");
         stopClockButton.addClickListener(e -> {
-            String tlaAction = "Cancel";
+            String tlaAction = "Pause";
             String msg = microwaveFSM.stopClock();
             messageDisplay.setText(msg);
             String tlaOutput = tlaSpecService.validateTransition(tlaAction, microwaveFSM);

@@ -5,6 +5,7 @@ com/microwave/dream/ui/MicrowaveDreamView$1.class
 com/microwave/dream/model/MicrowaveTraceEntry.class
 com/example/microwave/Application.class
 com/microwave/dream/service/MicrowaveService.class
+com/microwave/dream/ui/MicrowaveDreamView$2.class
 com/microwave/dream/model/MicrowaveState$Light.class
 com/example/microwave/ui/MicrowaveControlView.class
 com/example/microwave/fsm/MicrowaveFSM.class

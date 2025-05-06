@@ -4,6 +4,8 @@ import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
+import java.util.Timer;
+import java.util.TimerTask;
 
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.ResponseEntity;
@@ -38,12 +40,20 @@ public class MicrowaveDreamView extends VerticalLayout {
     private Div controlsDiv;
     private Span timerSpan;
     private Span powerSpan;
+    private Timer autoTickTimer;
+    private boolean isRunning = false;
 
     public MicrowaveDreamView() {
         setWidthFull();
         setJustifyContentMode(JustifyContentMode.CENTER);
         setAlignItems(Alignment.CENTER);
         setPadding(true);
+        setSpacing(true);
+
+        HorizontalLayout mainLayout = new HorizontalLayout();
+        mainLayout.setSpacing(true);
+        mainLayout.setPadding(true);
+        mainLayout.setAlignItems(Alignment.CENTER);
 
         microwaveDiv = new Div();
         microwaveDiv.addClassName("microwave");
@@ -53,7 +63,7 @@ public class MicrowaveDreamView extends VerticalLayout {
         microwaveDiv.getStyle().set("background", "#f0f0f0");
         microwaveDiv.getStyle().set("border", "2px solid #ccc");
         microwaveDiv.getStyle().set("border-radius", "16px");
-        microwaveDiv.getStyle().set("margin", "60px auto 0 auto");
+        microwaveDiv.getStyle().set("margin", "40px 0 0 0");
         microwaveDiv.getStyle().set("display", "flex");
         microwaveDiv.getStyle().set("flex-direction", "row");
         microwaveDiv.getStyle().set("box-shadow", "0 8px 32px 0 rgba(31, 38, 135, 0.18)");
@@ -147,8 +157,8 @@ public class MicrowaveDreamView extends VerticalLayout {
         Button tickButton = new Button("Tick", e -> sendEvent("TICK", null));
         controlsDiv.add(powerLowButton, powerHighButton, setTimerButton, startButton, stopButton, tickButton);
 
-        microwaveDiv.add(doorDiv, controlsDiv);
-        add(microwaveDiv);
+        mainLayout.add(microwaveDiv, controlsDiv);
+        add(mainLayout);
 
         // --- Trace Export/Import Controls ---
         HorizontalLayout traceControls = new HorizontalLayout();
@@ -214,6 +224,34 @@ public class MicrowaveDreamView extends VerticalLayout {
         } else {
             lightDiv.getStyle().set("background", "#888");
             lightDiv.getStyle().set("box-shadow", "none");
+        }
+        // --- Auto-tick logic ---
+        boolean shouldRun = "CLOSED".equals(door) && timer > 0 && !"OFF".equals(power) && "ON".equals(light);
+        if (shouldRun && !isRunning) {
+            startAutoTick();
+        } else if (!shouldRun && isRunning) {
+            stopAutoTick();
+        }
+    }
+
+    private void startAutoTick() {
+        isRunning = true;
+        autoTickTimer = new Timer();
+        autoTickTimer.scheduleAtFixedRate(new TimerTask() {
+            @Override
+            public void run() {
+                getUI().ifPresent(ui -> ui.access(() -> {
+                    sendEvent("TICK", null);
+                }));
+            }
+        }, 1000, 1000);
+    }
+
+    private void stopAutoTick() {
+        isRunning = false;
+        if (autoTickTimer != null) {
+            autoTickTimer.cancel();
+            autoTickTimer = null;
         }
     }
 

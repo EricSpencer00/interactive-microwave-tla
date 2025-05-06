@@ -1,10 +1,19 @@
 package com.example.microwave.service;
 
-import com.example.microwave.fsm.MicrowaveFSM;
-import java.io.*;
-import java.nio.file.*;
-import java.util.*;
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.Arrays;
+import java.util.List;
+
 import org.springframework.stereotype.Service;
+
+import com.example.microwave.fsm.MicrowaveFSM;
 
 @Service
 public class TlaSpecService {
@@ -31,7 +40,9 @@ public class TlaSpecService {
             
             // Build the command to run TLC.
             List<String> command = Arrays.asList(
-                "java", "-cp", JAR_PATH, "tlc2.TLC", tlaFile.getAbsolutePath()
+                "java", "-cp", JAR_PATH, "tlc2.TLC",
+                "-config", cfgFile.getAbsolutePath(),
+                tlaFile.getAbsolutePath()
             );
             System.out.println("Running: " + String.join(" ", command)); // Debug output.
             
@@ -146,6 +157,7 @@ public class TlaSpecService {
                "Next ==\n" +
                "  \\/ IncTime\n" +
                "  \\/ Start\n" +
+               "  \\/ Pause\n" +
                "  \\/ Cancel\n" +
                "  \\/ OpenDoor\n" +
                "  \\/ CloseDoor\n" +
@@ -182,8 +194,8 @@ public class TlaSpecService {
     // Returns the default CFG file as a string.
     public String loadDefaultCfg() {
         return "CONSTANTS\n" +
-               "  ImplementStartSafety = FALSE\n" +
-               "  ImplementOpenDoorSafety = FALSE\n" +
+               "  ImplementStartSafety = TRUE\n" +
+               "  ImplementOpenDoorSafety = TRUE\n" +
                "\n" +
                "SPECIFICATION \n" +
                "  Spec\n" +

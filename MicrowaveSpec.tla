@@ -85,6 +85,7 @@ CloseDoor ==
 Next ==
   \/ IncTime
   \/ Start
+  \/ Pause
   \/ Cancel
   \/ OpenDoor
   \/ CloseDoor
