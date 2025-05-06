@@ -1,0 +1,3 @@
+[submodule "trull"]
+	path = trull
+	url = https://github.com/LoyolaChicagoCS/trull.git
