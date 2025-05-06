@@ -4,3 +4,10 @@
 /Users/ericspencer/GitHub/interactive-microwave-tla/src/main/java/com/example/microwave/ui/MainView.java
 /Users/ericspencer/GitHub/interactive-microwave-tla/src/main/java/com/example/microwave/ui/MicrowaveControlView.java
 /Users/ericspencer/GitHub/interactive-microwave-tla/src/main/java/com/example/microwave/ui/TlaTerminalView.java
+/Users/ericspencer/GitHub/interactive-microwave-tla/src/main/java/com/microwave/dream/api/MicrowaveController.java
+/Users/ericspencer/GitHub/interactive-microwave-tla/src/main/java/com/microwave/dream/model/MicrowaveAction.java
+/Users/ericspencer/GitHub/interactive-microwave-tla/src/main/java/com/microwave/dream/model/MicrowaveEvent.java
+/Users/ericspencer/GitHub/interactive-microwave-tla/src/main/java/com/microwave/dream/model/MicrowaveState.java
+/Users/ericspencer/GitHub/interactive-microwave-tla/src/main/java/com/microwave/dream/model/MicrowaveTraceEntry.java
+/Users/ericspencer/GitHub/interactive-microwave-tla/src/main/java/com/microwave/dream/service/MicrowaveService.java
+/Users/ericspencer/GitHub/interactive-microwave-tla/src/main/java/com/microwave/dream/ui/MicrowaveDreamView.java
