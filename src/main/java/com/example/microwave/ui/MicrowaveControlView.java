@@ -1,13 +1,16 @@
 package com.example.microwave.ui;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Timer;
+import java.util.TimerTask;
+
 import com.example.microwave.fsm.MicrowaveFSM;
 import com.example.microwave.service.TlaSpecService;
+import com.vaadin.flow.component.UI;
 import com.vaadin.flow.component.button.Button;
-import com.vaadin.flow.component.button.ButtonVariant;
-import com.vaadin.flow.component.dialog.Dialog;
 import com.vaadin.flow.component.html.Div;
 import com.vaadin.flow.component.html.Span;
-import com.vaadin.flow.component.notification.Notification;
 import com.vaadin.flow.component.orderedlayout.FlexComponent.Alignment;
 import com.vaadin.flow.component.orderedlayout.FlexComponent.JustifyContentMode;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
@@ -15,161 +18,214 @@ import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.component.textfield.TextArea;
 
 /**
- * Customer‑facing microwave control panel:
- * - Graphic on left
- * - Status labels beneath graphic
- * - TLA Check box under status
- * - Controls + "Verify Trace" on right
+ * An improved UI for the microwave control, with safety/liveness labels outside,
+ * the microwave graphic centered, controls beneath, and the TLC check area under all.
  */
-public class MicrowaveControlView extends HorizontalLayout {
+public class MicrowaveControlView extends VerticalLayout {
     private final MicrowaveFSM microwaveFSM;
     private final TlaSpecService tlaSpecService;
+    private final TextArea tlaValidationArea;
+    private final TextArea fullTlaOutput;
+    private Timer autoTickTimer;
+    private Div timerDisplayBox;
+    private Div doorDiv;
+    private Div lightIndicator;
+    private Div[] radiationWaves = new Div[3];
+    private List<TraceEntry> trace = new ArrayList<>();
 
     public MicrowaveControlView(TlaSpecService tlaSpecService) {
         this.tlaSpecService = tlaSpecService;
         this.microwaveFSM = new MicrowaveFSM();
+        this.autoTickTimer = null;
 
-        setSizeFull();
+        // Main vertical layout
+        setWidthFull();
+        setDefaultHorizontalComponentAlignment(Alignment.CENTER);
         setPadding(true);
         setSpacing(true);
-        setAlignItems(Alignment.START);
 
-        // --- Left panel: microwave + status + TLA ---
-        VerticalLayout left = new VerticalLayout();
-        left.setWidth("65%");
-        left.setAlignItems(Alignment.CENTER);
-        left.setSpacing(true);
+        // 1️⃣ Safety/Liveness Labels (outside the microwave)
+        HorizontalLayout labelLayout = new HorizontalLayout();
+        labelLayout.setWidthFull();
+        labelLayout.setJustifyContentMode(JustifyContentMode.CENTER);
+        labelLayout.setSpacing(true);
+        labelLayout.add(
+            createLabel("Safety\n door = OPEN ⇒ radiation = OFF", "orange"),
+            createLabel("Liveness\n radiation = ON ⇒ radiation = OFF", "yellow"),
+            createLabel("Safety\n radiation = ON ⇒ door = CLOSED", "orange")
+        );
+        add(labelLayout);
 
-        // Graphic
+        // 2️⃣ Microwave Graphic
         Div graphic = buildMicrowaveGraphic();
-        left.add(graphic);
+        add(graphic);
 
-        // Status labels
-        Span stateLabel = new Span();
-        Span timerLabel = new Span();
-        Span lightLabel = new Span();
-        Span radLabel = new Span();
-        updateStatus(stateLabel, timerLabel, lightLabel, radLabel);
-        left.add(stateLabel, timerLabel, lightLabel, radLabel);
-
-        // TLA+ check box
-        Div tlaBox = new Div();
-        tlaBox.getStyle().set("border", "2px solid #FFA500");
-        tlaBox.getStyle().set("padding", "0.5rem");
-        tlaBox.getStyle().set("width", "100%");
-        Span tlaTitle = new Span("TLA+ Check:");
-        Span tlaOutput = new Span("(waiting...)");
-        tlaOutput.getStyle().set("white-space", "pre-wrap");
-        tlaBox.add(tlaTitle, tlaOutput);
-        left.add(tlaBox);
-
-        // --- Right panel: controls + verify ---
-        VerticalLayout right = new VerticalLayout();
-        right.setWidth("35%");
-        right.setAlignItems(Alignment.STRETCH);
-        right.setJustifyContentMode(JustifyContentMode.START);
-        right.setSpacing(true);
-
-        // Control buttons
-        Button add10 = new Button("+10s", e -> performAction(
-            "IncTime", microwaveFSM.addTime(10),
-            stateLabel, timerLabel, lightLabel, radLabel, tlaOutput
+        // 3️⃣ Control Buttons
+        HorizontalLayout controls = new HorizontalLayout();
+        controls.setJustifyContentMode(JustifyContentMode.CENTER);
+        controls.setSpacing(true);
+        Button doorBtn = new Button("Door", e -> handleAction(
+            microwaveFSM.getState() == MicrowaveFSM.State.DOOR_OPEN ? "CloseDoor" : "OpenDoor",
+            microwaveFSM.getState() == MicrowaveFSM.State.DOOR_OPEN ? microwaveFSM.closeDoor() : microwaveFSM.openDoor()
         ));
-        add10.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
+        Button add10 = new Button("+10s", e -> handleAction("IncTime", microwaveFSM.addTime(10)));
+        Button start = new Button("Start", e -> handleAction("Start", microwaveFSM.startCooking()));
+        Button pause = new Button("Pause", e -> handleAction("Cancel", microwaveFSM.stopClock()));
+        Button reset = new Button("Reset", e -> handleAction("Cancel", microwaveFSM.resetClock()));
+        for (Button b : new Button[]{doorBtn, add10, start, pause, reset}) {
+            b.getStyle()
+             .set("background", "#ff9800")
+             .set("color", "white")
+             .set("border", "none")
+             .set("borderRadius", "4px")
+             .set("padding", "0.5rem 1rem")
+             .set("fontWeight", "bold");
+        }
+        controls.add(doorBtn, add10, start, pause, reset);
+        add(controls);
 
-        Button start = new Button("Start", e -> performAction(
-            "Start", microwaveFSM.startCooking(),
-            stateLabel, timerLabel, lightLabel, radLabel, tlaOutput
-        ));
-        start.addThemeVariants(ButtonVariant.LUMO_SUCCESS);
+        // 4️⃣ TLC Check Area (under the microwave)
+        tlaValidationArea = new TextArea("TLC Check");
+        tlaValidationArea.setWidth("80%");
+        tlaValidationArea.setReadOnly(true);
+        tlaValidationArea.getStyle()
+            .set("white-space", "pre-wrap")
+            .set("background", "#fff3e0")
+            .set("borderLeft", "4px solid orange");
 
-        Button pause = new Button("Pause", e -> performAction(
-            "Pause", microwaveFSM.stopClock(),
-            stateLabel, timerLabel, lightLabel, radLabel, tlaOutput
-        ));
-        pause.addThemeVariants(ButtonVariant.LUMO_CONTRAST);
+        fullTlaOutput = new TextArea("Full TLC Output");
+        fullTlaOutput.setWidth("80%");
+        fullTlaOutput.setReadOnly(true);
+        fullTlaOutput.setVisible(false);
+        fullTlaOutput.getStyle().set("white-space", "pre-wrap");
 
-        Button tick = new Button("Tick", e -> performAction(
-            "Tick", microwaveFSM.tick(),
-            stateLabel, timerLabel, lightLabel, radLabel, tlaOutput
-        ));
+        // Toggle full output on click
+        tlaValidationArea.addFocusListener(e -> fullTlaOutput.setVisible(!fullTlaOutput.isVisible()));
 
-        Button reset = new Button("Reset", e -> performAction(
-            "Cancel", microwaveFSM.resetClock(),
-            stateLabel, timerLabel, lightLabel, radLabel, tlaOutput
-        ));
-        reset.addThemeVariants(ButtonVariant.LUMO_ERROR);
+        add(tlaValidationArea, fullTlaOutput);
 
-        // Verify trace with full model-check
-        Button verify = new Button("Verify Trace", e -> {
-            String full = tlaSpecService.runTLC(
-                tlaSpecService.loadDefaultSpec(),
-                tlaSpecService.loadDefaultCfg()
-            );
-            Dialog dlg = new Dialog();
-            TextArea area = new TextArea("Full TLA+ Output", full);
-            area.setWidth("600px");
-            area.setHeight("400px");
-            dlg.add(area);
-            dlg.open();
-        });
-        verify.addThemeVariants(ButtonVariant.LUMO_SUCCESS);
-
-        right.add(add10, start, pause, tick, reset, verify);
-
-        add(left, right);
+        // Initialize the graphic state
+        updateGraphic();
     }
 
-    private void performAction(
-        String tlaAction,
-        String message,
-        Span stateLabel,
-        Span timerLabel,
-        Span lightLabel,
-        Span radLabel,
-        Span tlaOutput
-    ) {
-        Notification.show(message);
-        String out = tlaSpecService.validateTransition(tlaAction, microwaveFSM);
-        tlaOutput.setText(out);
-        updateStatus(stateLabel, timerLabel, lightLabel, radLabel);
-    }
-
-    private void updateStatus(
-        Span stateLabel,
-        Span timerLabel,
-        Span lightLabel,
-        Span radLabel
-    ) {
-        stateLabel.setText("State: " + microwaveFSM.getState());
-        int t = microwaveFSM.getTimer();
-        timerLabel.setText(String.format("Timer: %02d:%02d", t / 60, t % 60));
-        lightLabel.setText("Light: " + (microwaveFSM.isLightOn() ? "On" : "Off"));
-        radLabel.setText("Radiation: " + (microwaveFSM.isRadiationOn() ? "On" : "Off"));
+    private Span createLabel(String text, String bgColor) {
+        Span label = new Span(text);
+        label.getStyle()
+             .set("background", bgColor)
+             .set("color", "black")
+             .set("padding", "8px")
+             .set("borderRadius", "6px")
+             .set("white-space", "pre-line")
+             .set("fontSize", "0.85rem");
+        return label;
     }
 
     private Div buildMicrowaveGraphic() {
-        Div wrapper = new Div();
-        wrapper.getStyle().set("position", "relative");
-        wrapper.getStyle().set("width", "300px");
-        wrapper.getStyle().set("height", "200px");
-        wrapper.getStyle().set("background", "#fff");
-        wrapper.getStyle().set("border", "2px solid #FFA500");
-        wrapper.getStyle().set("border-radius", "8px");
-        wrapper.getStyle().set("box-shadow", "2px 2px 8px rgba(0,0,0,0.1)");
+        int w = 400, h = 220;
+        Div container = new Div();
+        container.getStyle()
+                 .set("position", "relative")
+                 .set("width", w + "px")
+                 .set("height", h + "px")
+                 .set("background", "#f0f0f0")
+                 .set("border", "4px solid orange")
+                 .set("borderRadius", "12px")
+                 .set("boxShadow", "0 4px 24px #ff980033");
 
-        Div door = new Div();
-        door.getStyle().set("width", "200px");
-        door.getStyle().set("height", "140px");
-        door.getStyle().set("background", "#e0e0e0");
-        door.getStyle().set("border", "2px solid #ccc");
-        door.getStyle().set("border-radius", "6px");
-        door.getStyle().set("position", "absolute");
-        door.getStyle().set("top", "30px");
-        door.getStyle().set("left", "50px");
-        door.getStyle().set("transition", "transform 0.3s ease");
+        // Timer
+        timerDisplayBox = new Div();
+        timerDisplayBox.getStyle().set("position", "absolute");
+        timerDisplayBox.getStyle().set("top", "16px");
+        timerDisplayBox.getStyle().set("right", "16px");
+        timerDisplayBox.getStyle().set("width", "72px");
+        timerDisplayBox.getStyle().set("height", "32px");
+        timerDisplayBox.getStyle().set("background", "#222");
+        timerDisplayBox.getStyle().set("color", "#fff");
+        timerDisplayBox.getStyle().set("display", "flex");
+        timerDisplayBox.getStyle().set("alignItems", "center");
+        timerDisplayBox.getStyle().set("justifyContent", "center");
+        timerDisplayBox.getStyle().set("fontWeight", "bold");
+        timerDisplayBox.getStyle().set("borderRadius", "6px");
+        timerDisplayBox.setText("00:00");
+        container.add(timerDisplayBox);
 
-        wrapper.add(door);
-        return wrapper;
+        // Door panel
+        doorDiv = new Div();
+        doorDiv.getStyle().set("position", "absolute");
+        doorDiv.getStyle().set("width", "55%");
+        doorDiv.getStyle().set("height", "80%");
+        doorDiv.getStyle().set("top", "10%");
+        doorDiv.getStyle().set("left", "5%");
+        doorDiv.getStyle().set("background", "#e0e0e0");
+        doorDiv.getStyle().set("border", "2px solid #ff9800");
+        container.add(doorDiv);
+
+        // Light indicator
+        lightIndicator = new Div();
+        lightIndicator.getStyle().set("position", "absolute");
+        lightIndicator.getStyle().set("top", "25%");
+        lightIndicator.getStyle().set("left", "20%");
+        lightIndicator.getStyle().set("width", "32px");
+        lightIndicator.getStyle().set("height", "32px");
+        lightIndicator.getStyle().set("background", "radial-gradient(circle, #ffe066 60%, #ffeb3b 100%)");
+        lightIndicator.getStyle().set("borderRadius", "50%");
+        lightIndicator.setVisible(false);
+        container.add(lightIndicator);
+
+        // Radiation waves
+        for (int i = 0; i < 3; i++) {
+            Div wave = new Div();
+            wave.getStyle().set("position", "absolute");
+            wave.getStyle().set("top", (int)(h*0.35 + i*18) + "px");
+            wave.getStyle().set("left", (int)(w*0.23 + i*10) + "px");
+            wave.getStyle().set("width", "36px");
+            wave.getStyle().set("height", "16px");
+            wave.getStyle().set("borderRadius", "50%/60%");
+            wave.getStyle().set("background", "linear-gradient(90deg, #ff9800 60%, transparent)");
+            wave.setVisible(false);
+            radiationWaves[i] = wave;
+            container.add(wave);
+        }
+
+        return container;
+    }
+
+    private void handleAction(String action, String msg) {
+        trace.add(new TraceEntry(microwaveFSM.getState(), microwaveFSM.getTimer(), action));
+        String out = tlaSpecService.validateTransition(action, microwaveFSM);
+        tlaValidationArea.setValue(out);
+        fullTlaOutput.setValue(out);
+        fullTlaOutput.setVisible(false);
+        updateGraphic();
+        scheduleAutoTick();
+    }
+
+    private void scheduleAutoTick() {
+        if (autoTickTimer != null) autoTickTimer.cancel();
+        if (microwaveFSM.getState() == MicrowaveFSM.State.COOKING && microwaveFSM.getTimer() > 0) {
+            autoTickTimer = new Timer();
+            autoTickTimer.scheduleAtFixedRate(new TimerTask() {
+                public void run() {
+                    UI.getCurrent().access(() -> handleAction("Tick", microwaveFSM.tick()));
+                }
+            }, 1000, 1000);
+        }
+    }
+
+    private void updateGraphic() {
+        boolean doorOpen = microwaveFSM.getState() == MicrowaveFSM.State.DOOR_OPEN;
+        doorDiv.getStyle().set("transform", doorOpen ? "rotateY(135deg)" : "none");
+        lightIndicator.setVisible(doorOpen);
+        boolean cooking = microwaveFSM.getState() == MicrowaveFSM.State.COOKING;
+        for (Div w : radiationWaves) w.setVisible(cooking);
+        int t = microwaveFSM.getTimer();
+        timerDisplayBox.setText(String.format("%02d:%02d", t/60, t%60));
+    }
+
+    private static class TraceEntry {
+        final MicrowaveFSM.State state;
+        final int timer;
+        final String action;
+        TraceEntry(MicrowaveFSM.State s, int t, String a) { state = s; timer = t; action = a; }
     }
 }
