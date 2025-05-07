@@ -21,10 +21,16 @@ import com.vaadin.flow.component.textfield.TextArea;
 import com.vaadin.flow.server.StreamResource;
 
 /**
- * MicrowaveControlView uses hardcoded images for each state,
- * a Tick button, and no safety/liveness labels.
+ * MicrowaveControlView provides an interactive interface for the microwave simulation
+ * with TLA+ validation feedback.
  */
 public class MicrowaveControlView extends VerticalLayout {
+    private static final String IMAGE_PATH = "images/";
+    private static final int IMAGE_WIDTH = 400;
+    private static final int IMAGE_HEIGHT = 250;
+    private static final int MAX_TLA_OUTPUT_HEIGHT = 200;
+    private static final int TIMER_INTERVAL = 1000;
+
     private final MicrowaveFSM fsm;
     private final TlaSpecService tla;
     private final TextArea tlaCheck;
@@ -43,49 +49,73 @@ public class MicrowaveControlView extends VerticalLayout {
         setPadding(true);
         setSpacing(true);
 
+        // Microwave display section
+        VerticalLayout displaySection = new VerticalLayout();
+        displaySection.setWidthFull();
+        displaySection.setAlignItems(Alignment.CENTER);
+        displaySection.setSpacing(true);
+
         // Oven image
         ovenImage = new Image(getImageSource(), "Microwave");
-        ovenImage.setWidth("400px");
-        ovenImage.setHeight("250px");
+        ovenImage.setWidth(IMAGE_WIDTH + "px");
+        ovenImage.setHeight(IMAGE_HEIGHT + "px");
         ovenImage.addClickListener(e -> toggleDoor());
-        add(ovenImage);
+        displaySection.add(ovenImage);
 
         // Timer display
         timerDisplay = new Div();
         timerDisplay.getStyle()
             .set("background", "#333")
             .set("color", "#FFF")
-            .set("padding", "4px 8px")
+            .set("padding", "8px 16px")
             .set("borderRadius", "4px")
-            .set("fontSize", "1.2rem")
-            .set("fontFamily", "monospace");
-        add(timerDisplay);
+            .set("fontSize", "1.5rem")
+            .set("fontFamily", "monospace")
+            .set("margin", "1rem 0");
+        displaySection.add(timerDisplay);
 
-        // Controls row with Tick button
-        HorizontalLayout ctrls = new HorizontalLayout();
-        ctrls.setJustifyContentMode(JustifyContentMode.CENTER);
-        ctrls.setSpacing(true);
-        ctrls.add(
+        add(displaySection);
+
+        // Controls section
+        HorizontalLayout controlsSection = new HorizontalLayout();
+        controlsSection.setJustifyContentMode(JustifyContentMode.CENTER);
+        controlsSection.setSpacing(true);
+        controlsSection.setPadding(true);
+        controlsSection.getStyle().set("background", "#f5f5f5")
+            .set("borderRadius", "8px")
+            .set("margin", "1rem 0");
+        
+        controlsSection.add(
             createBtn("+10s", () -> perform("IncTime", fsm.addTime(10))),
             createBtn("Start", () -> perform("Start", fsm.startCooking())),
             createBtn("Pause", () -> perform("Cancel", fsm.stopClock())),
             createBtn("Reset", () -> perform("Cancel", fsm.resetClock())),
             createBtn("Tick", () -> perform("Tick", fsm.tick()))
         );
-        add(ctrls);
+        add(controlsSection);
 
-        // TLC output panels
-        tlaCheck = new TextArea("TLC Check");
-        tlaCheck.setWidth("80%");
+        // TLA+ validation section
+        VerticalLayout validationSection = new VerticalLayout();
+        validationSection.setWidthFull();
+        validationSection.setSpacing(true);
+        validationSection.getStyle().set("background", "#f8f9fa")
+            .set("borderRadius", "8px")
+            .set("padding", "1rem")
+            .set("margin", "1rem 0");
+
+        tlaCheck = new TextArea("TLA+ Transition Validation");
+        tlaCheck.setWidth("100%");
         tlaCheck.setReadOnly(true);
-        tlaCheck.setMaxHeight("200px");
-        add(tlaCheck);
+        tlaCheck.setMaxHeight(MAX_TLA_OUTPUT_HEIGHT + "px");
+        validationSection.add(tlaCheck);
 
-        fullTla = new TextArea("Full TLC Output");
-        fullTla.setWidth("80%");
+        fullTla = new TextArea("Full TLA+ Model Check");
+        fullTla.setWidth("100%");
         fullTla.setReadOnly(true);
-        fullTla.setMaxHeight("200px");
-        add(fullTla);
+        fullTla.setMaxHeight(MAX_TLA_OUTPUT_HEIGHT + "px");
+        validationSection.add(fullTla);
+
+        add(validationSection);
 
         // Start auto-tick timer
         startAutoTick();
@@ -98,7 +128,7 @@ public class MicrowaveControlView extends VerticalLayout {
         String imageName = fsm.getState() == MicrowaveFSM.State.DOOR_OPEN ? 
             "microwave_open.png" : "microwave_closed.png";
         return new StreamResource(imageName, () -> 
-            getClass().getResourceAsStream("/META-INF/resources/frontend/images/" + imageName));
+            getClass().getResourceAsStream("/META-INF/resources/" + IMAGE_PATH + imageName));
     }
 
     private void toggleDoor() {
@@ -140,7 +170,7 @@ public class MicrowaveControlView extends VerticalLayout {
                     }));
                 }
             }
-        }, 1000, 1000);
+        }, TIMER_INTERVAL, TIMER_INTERVAL);
     }
 
     @Override

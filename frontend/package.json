@@ -1,0 +1,23 @@
+{
+  "name": "microwave-tla-frontend",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "test": "vitest"
+  },
+  "dependencies": {
+    "@vaadin/button": "^24.4.0",
+    "@vaadin/text-field": "^24.4.0",
+    "@vaadin/vertical-layout": "^24.4.0",
+    "@vaadin/horizontal-layout": "^24.4.0"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "^5.0.0",
+    "vite": "^5.0.0",
+    "vitest": "^1.0.0"
+  }
+} 
