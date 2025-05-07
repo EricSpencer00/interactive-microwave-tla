@@ -1,6 +1,6 @@
-/Users/ericspencer/GitHub/interactive-microwave-tla/src/main/java/com/example/microwave/Application.java
-/Users/ericspencer/GitHub/interactive-microwave-tla/src/main/java/com/example/microwave/fsm/MicrowaveFSM.java
+/Users/ericspencer/GitHub/interactive-microwave-tla/src/main/java/com/example/microwave/ui/TlaTerminalView.java
+/Users/ericspencer/GitHub/interactive-microwave-tla/src/main/java/com/example/microwave/ui/MicrowaveControlView.java
 /Users/ericspencer/GitHub/interactive-microwave-tla/src/main/java/com/example/microwave/service/TlaSpecService.java
 /Users/ericspencer/GitHub/interactive-microwave-tla/src/main/java/com/example/microwave/ui/MainView.java
-/Users/ericspencer/GitHub/interactive-microwave-tla/src/main/java/com/example/microwave/ui/MicrowaveControlView.java
-/Users/ericspencer/GitHub/interactive-microwave-tla/src/main/java/com/example/microwave/ui/TlaTerminalView.java
+/Users/ericspencer/GitHub/interactive-microwave-tla/src/main/java/com/example/microwave/Application.java
+/Users/ericspencer/GitHub/interactive-microwave-tla/src/main/java/com/example/microwave/fsm/MicrowaveFSM.java

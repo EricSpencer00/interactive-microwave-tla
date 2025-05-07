@@ -98,7 +98,7 @@ public class MicrowaveControlView extends VerticalLayout {
         String imageName = fsm.getState() == MicrowaveFSM.State.DOOR_OPEN ? 
             "microwave_open.png" : "microwave_closed.png";
         return new StreamResource(imageName, () -> 
-            getClass().getResourceAsStream("/static/images/" + imageName));
+            getClass().getResourceAsStream("/META-INF/resources/frontend/images/" + imageName));
     }
 
     private void toggleDoor() {

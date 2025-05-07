@@ -10,6 +10,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Arrays;
+import java.util.Comparator;
 import java.util.List;
 
 import org.slf4j.Logger;
@@ -28,9 +29,10 @@ public class TlaSpecService {
     private static final String TLA_CFG_PATH = "MicrowaveSpec.cfg";
 
     public String runTLC(String tlaSpecCode, String cfgCode) {
+        Path tempDir = null;
         try {
             // Create a temporary directory for this run
-            Path tempDir = Files.createTempDirectory("tla-run");
+            tempDir = Files.createTempDirectory("tla-run");
             File tlaFile = tempDir.resolve(TLA_SPEC_PATH).toFile();
             File cfgFile = tempDir.resolve(TLA_CFG_PATH).toFile();
 
@@ -63,16 +65,27 @@ public class TlaSpecService {
                 logger.error("TLC process exited with code: {}", exitCode);
             }
             
-            // Clean up temporary files
-            Files.deleteIfExists(tlaFile.toPath());
-            Files.deleteIfExists(cfgFile.toPath());
-            Files.deleteIfExists(tempDir);
-            
             return output.toString();
             
         } catch (IOException | InterruptedException e) {
             logger.error("Error running TLC", e);
             return "TLC Error: " + e.getMessage();
+        } finally {
+            if (tempDir != null) {
+                try {
+                    Files.walk(tempDir)
+                        .sorted(Comparator.reverseOrder())
+                        .forEach(path -> {
+                            try {
+                                Files.delete(path);
+                            } catch (IOException e) {
+                                logger.warn("Failed to delete temporary file: {}", path, e);
+                            }
+                        });
+                } catch (IOException e) {
+                    logger.warn("Failed to clean up temporary directory", e);
+                }
+            }
         }
     }
     
@@ -121,20 +134,37 @@ public class TlaSpecService {
     }
     
     public String validateTransition(String action, MicrowaveFSM fsm) {
+        Path tempDir = null;
         try {
             // Create temporary directory for TLA files
-            Path tempDir = Files.createTempDirectory("tla-run");
+            tempDir = Files.createTempDirectory("tla-run");
             Path specFile = tempDir.resolve(TLA_SPEC_PATH);
+            Path cfgFile = tempDir.resolve(TLA_CFG_PATH);
             
             // Copy the TLA spec file to temp directory
             Files.copy(new ClassPathResource(TLA_SPEC_PATH).getInputStream(), specFile);
+            
+            // Generate and write the configuration file
+            String initClause = generateFSMInitClause(fsm);
+            String nextClause = generateOverriddenNextClause(action);
+            String cfgContent = readResourceAsString(TLA_CFG_PATH)
+                .replace("INIT Init", "INIT OverriddenInit")
+                .replace("NEXT Next", "NEXT OverriddenNext");
+            
+            // Write the modified spec and config
+            String specContent = readResourceAsString(TLA_SPEC_PATH) + "\n" + initClause + "\n" + nextClause;
+            Files.write(specFile, specContent.getBytes());
+            Files.write(cfgFile, cfgContent.getBytes());
             
             // Build the command to run TLC
             ProcessBuilder pb = new ProcessBuilder(
                 "java", "-cp", JAR_PATH,
                 "tlc2.TLC",
+                "-config", cfgFile.toString(),
                 specFile.toString()
             );
+            pb.directory(tempDir.toFile());
+            pb.redirectErrorStream(true);
             
             // Start the process
             Process process = pb.start();
@@ -154,15 +184,27 @@ public class TlaSpecService {
                 logger.error("TLC validation process exited with code: {}", exitCode);
             }
             
-            // Clean up
-            Files.deleteIfExists(specFile);
-            Files.deleteIfExists(tempDir);
-            
             return output.toString();
             
         } catch (Exception e) {
             logger.error("Error running TLA validation", e);
             return "Error running TLA validation: " + e.getMessage();
+        } finally {
+            if (tempDir != null) {
+                try {
+                    Files.walk(tempDir)
+                        .sorted(Comparator.reverseOrder())
+                        .forEach(path -> {
+                            try {
+                                Files.delete(path);
+                            } catch (IOException e) {
+                                logger.warn("Failed to delete temporary file: {}", path, e);
+                            }
+                        });
+                } catch (IOException e) {
+                    logger.warn("Failed to clean up temporary directory", e);
+                }
+            }
         }
     }
 }
