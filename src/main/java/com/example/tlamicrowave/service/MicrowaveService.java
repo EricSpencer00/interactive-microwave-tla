@@ -15,7 +15,7 @@ import java.util.List;
 @RequiredArgsConstructor
 public class MicrowaveService {
     private static final Logger logger = LoggerFactory.getLogger(MicrowaveService.class);
-    private final MicrowaveState state;
+    private final MicrowaveState state = new MicrowaveState();
     private final List<String> verificationLog = new ArrayList<>();
     private UI ui;
 
@@ -79,11 +79,27 @@ public class MicrowaveService {
     }
 
     private void logState(String action) {
-        String log = String.format("%s: (door=%s, time=%d, radiation=%s)",
+        String log = String.format("%s: (door=%s, time=%d, radiation=%s, beep=%s)",
                 action,
                 state.getDoor(),
                 state.getTimeRemaining(),
-                state.getRadiation());
+                state.getRadiation(),
+                state.getBeep());
+        
+        // Check safety properties
+        if (state.isDoorSafetyViolated()) {
+            log += " [VIOLATION: Door Safety]";
+        }
+        if (state.isBeepSafetyViolated()) {
+            log += " [VIOLATION: Beep Safety]";
+        }
+        if (state.isRadiationSafetyViolated()) {
+            log += " [VIOLATION: Radiation Safety]";
+        }
+        if (state.isDoorStateSafetyViolated()) {
+            log += " [VIOLATION: Door State Safety]";
+        }
+        
         logger.debug("State change: {}", log);
         verificationLog.add(log);
     }
@@ -103,5 +119,11 @@ public class MicrowaveService {
 
     public MicrowaveState getState() {
         return state;
+    }
+
+    public void stopBeep() {
+        state.stopBeep();
+        logState("StopBeep");
+        pushUpdate();
     }
 } 
