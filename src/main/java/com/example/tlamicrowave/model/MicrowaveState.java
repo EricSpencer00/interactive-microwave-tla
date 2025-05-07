@@ -60,6 +60,15 @@ public class MicrowaveState {
         door = DoorState.CLOSED;
     }
 
+    public void manualTick() {
+        if (timeRemaining > 0) {
+            timeRemaining--;
+            if (timeRemaining == 0) {
+                radiation = RadiationState.OFF;
+            }
+        }
+    }
+
     public boolean isDoorSafetyViolated() {
         return door == DoorState.OPEN && radiation == RadiationState.ON;
     }

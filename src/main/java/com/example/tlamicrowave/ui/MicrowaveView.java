@@ -9,6 +9,7 @@ import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.router.Route;
 import jakarta.annotation.security.PermitAll;
 import org.springframework.beans.factory.annotation.Autowired;
+import com.vaadin.flow.component.UI;
 
 @Route("")
 @PermitAll
@@ -16,10 +17,13 @@ public class MicrowaveView extends VerticalLayout {
     private final MicrowaveService service;
     private final Div display;
     private final Div verificationPanel;
+    private final UI ui;
 
     @Autowired
     public MicrowaveView(MicrowaveService service) {
         this.service = service;
+        this.ui = UI.getCurrent();
+        service.setUI(ui);
         setSizeFull();
         setAlignItems(Alignment.CENTER);
         setJustifyContentMode(JustifyContentMode.CENTER);
@@ -40,6 +44,7 @@ public class MicrowaveView extends VerticalLayout {
         Button startButton = new Button("Start");
         Button cancelButton = new Button("Cancel");
         Button doorButton = new Button("Open/Close Door");
+        Button tickButton = new Button("Tick");
 
         // Verification panel
         verificationPanel = new Div();
@@ -53,7 +58,7 @@ public class MicrowaveView extends VerticalLayout {
 
         // Add components
         add(display);
-        add(new VerticalLayout(incrementButton, startButton, cancelButton, doorButton));
+        add(new VerticalLayout(incrementButton, startButton, cancelButton, doorButton, tickButton));
         add(new H2("TLC Verification Output"));
         add(verificationPanel);
 
@@ -78,29 +83,36 @@ public class MicrowaveView extends VerticalLayout {
             updateUI();
         });
 
+        tickButton.addClickListener(e -> {
+            service.manualTick();
+            updateUI();
+        });
+
         // Initial UI update
         updateUI();
     }
 
     private void updateUI() {
-        MicrowaveState state = service.getState();
-        
-        // Update display
-        String displayText = String.format("%02d", state.getTimeRemaining());
-        if (state.getDoor() == MicrowaveState.DoorState.OPEN) {
-            displayText += " DOOR OPEN";
-        }
-        if (state.getRadiation() == MicrowaveState.RadiationState.ON) {
-            displayText += " HEATING";
-        }
-        display.setText(displayText);
+        ui.access(() -> {
+            MicrowaveState state = service.getState();
+            
+            // Update display
+            String displayText = String.format("%02d", state.getTimeRemaining());
+            if (state.getDoor() == MicrowaveState.DoorState.OPEN) {
+                displayText += " DOOR OPEN";
+            }
+            if (state.getRadiation() == MicrowaveState.RadiationState.ON) {
+                displayText += " HEATING";
+            }
+            display.setText(displayText);
 
-        // Update verification panel
-        verificationPanel.removeAll();
-        service.getVerificationLog().forEach(log -> {
-            Div logEntry = new Div(log);
-            logEntry.getStyle().set("margin", "0.2em 0");
-            verificationPanel.add(logEntry);
+            // Update verification panel
+            verificationPanel.removeAll();
+            service.getVerificationLog().forEach(log -> {
+                Div logEntry = new Div(log);
+                logEntry.getStyle().set("margin", "0.2em 0");
+                verificationPanel.add(logEntry);
+            });
         });
     }
 } 
