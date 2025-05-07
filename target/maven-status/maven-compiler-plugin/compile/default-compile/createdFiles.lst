@@ -1,5 +1,10 @@
-com/example/microwave/fsm/MicrowaveFSM.class
+com/example/microwave/ui/MicrowaveControlView$Trace.class
 com/example/microwave/Application.class
+com/example/microwave/ui/MicrowaveControlView.class
+com/example/microwave/ui/MicrowaveControlView$1.class
+com/example/microwave/ui/MicrowaveControlView$2.class
+com/example/microwave/fsm/MicrowaveFSM.class
 com/example/microwave/service/TlaSpecService.class
 com/example/microwave/ui/TlaTerminalView.class
 com/example/microwave/fsm/MicrowaveFSM$State.class
+com/example/microwave/ui/MainView.class

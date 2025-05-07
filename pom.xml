@@ -29,6 +29,14 @@
     </dependencies>
   </dependencyManagement>
 
+  <repositories>
+    <repository>
+      <id>local-tla-repo</id>
+      <name>Local TLA+ Repository</name>
+      <url>file://${project.basedir}/lib/maven-repo</url>
+    </repository>
+  </repositories>
+
   <dependencies>
     <!-- Spring Boot Starters -->
     <dependency>
@@ -52,8 +60,6 @@
       <groupId>org.lamport</groupId>
       <artifactId>tla2tools</artifactId>
       <version>1.8.0</version>
-      <scope>system</scope>
-      <systemPath>${project.basedir}/lib/tla2tools.jar</systemPath>
     </dependency>
 
     <!-- Testing -->
@@ -69,6 +75,7 @@
       <plugin>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-maven-plugin</artifactId>
+        <version>${spring-boot.version}</version>
       </plugin>
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>

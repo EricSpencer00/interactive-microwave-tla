@@ -2,8 +2,10 @@ package com.example.microwave.ui;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Timer;
 import java.util.TimerTask;
+import java.util.concurrent.ConcurrentHashMap;
 
 import com.example.microwave.fsm.MicrowaveFSM;
 import com.example.microwave.service.TlaSpecService;
@@ -30,6 +32,7 @@ public class MicrowaveControlView extends VerticalLayout {
     private static final int IMAGE_HEIGHT = 250;
     private static final int MAX_TLA_OUTPUT_HEIGHT = 200;
     private static final int TIMER_INTERVAL = 1000;
+    private static final int DEBOUNCE_DELAY = 500; // ms
 
     private final MicrowaveFSM fsm;
     private final TlaSpecService tla;
@@ -38,11 +41,23 @@ public class MicrowaveControlView extends VerticalLayout {
     private Image ovenImage;
     private Div timerDisplay;
     private Timer autoTick;
+    private Timer debounceTimer;
     private List<Trace> trace = new ArrayList<>();
+    
+    // Cache for image resources
+    private final Map<String, StreamResource> imageCache = new ConcurrentHashMap<>();
+    
+    // State tracking
+    private MicrowaveFSM.State lastState;
+    private int lastTimer;
+    private String lastTlaResult;
+    private String lastFullTlaResult;
 
     public MicrowaveControlView(TlaSpecService tla) {
         this.fsm = new MicrowaveFSM();
         this.tla = tla;
+        this.lastState = fsm.getState();
+        this.lastTimer = fsm.getTimer();
 
         setWidthFull();
         setDefaultHorizontalComponentAlignment(Alignment.CENTER);
@@ -90,7 +105,8 @@ public class MicrowaveControlView extends VerticalLayout {
             createBtn("Start", () -> perform("Start", fsm.startCooking())),
             createBtn("Pause", () -> perform("Cancel", fsm.stopClock())),
             createBtn("Reset", () -> perform("Cancel", fsm.resetClock())),
-            createBtn("Tick", () -> perform("Tick", fsm.tick()))
+            createBtn("Tick", () -> perform("Tick", fsm.tick())),
+            createBtn("Validate Full Spec", this::validateFullSpec)
         );
         add(controlsSection);
 
@@ -127,8 +143,9 @@ public class MicrowaveControlView extends VerticalLayout {
     private StreamResource getImageSource() {
         String imageName = fsm.getState() == MicrowaveFSM.State.DOOR_OPEN ? 
             "microwave_open.png" : "microwave_closed.png";
-        return new StreamResource(imageName, () -> 
-            getClass().getResourceAsStream("/META-INF/resources/" + IMAGE_PATH + imageName));
+        return imageCache.computeIfAbsent(imageName, name -> 
+            new StreamResource(name, () -> 
+                getClass().getResourceAsStream("/META-INF/resources/" + IMAGE_PATH + name)));
     }
 
     private void toggleDoor() {
@@ -141,16 +158,48 @@ public class MicrowaveControlView extends VerticalLayout {
 
     private void perform(String action, String result) {
         if (result != null && !result.startsWith("Cannot")) {
-            String tlaResult = tla.validateTransition(action, fsm);
-            tlaCheck.setValue(tlaResult);
-            fullTla.setValue(tla.runTLC(tla.loadDefaultSpec(), tla.loadDefaultCfg()));
-            updateDisplay();
+            // Debounce TLA validation
+            if (debounceTimer != null) {
+                debounceTimer.cancel();
+            }
+            debounceTimer = new Timer();
+            debounceTimer.schedule(new TimerTask() {
+                @Override
+                public void run() {
+                    getUI().ifPresent(ui -> ui.access(() -> {
+                        String tlaResult = tla.validateTransition(action, fsm);
+                        if (!tlaResult.equals(lastTlaResult)) {
+                            tlaCheck.setValue(tlaResult);
+                            lastTlaResult = tlaResult;
+                        }
+                        updateDisplay();
+                    }));
+                }
+            }, DEBOUNCE_DELAY);
         }
     }
 
+    private void validateFullSpec() {
+        getUI().ifPresent(ui -> ui.access(() -> {
+            String fullResult = tla.runTLC(tla.loadDefaultSpec(), tla.loadDefaultCfg());
+            if (!fullResult.equals(lastFullTlaResult)) {
+                fullTla.setValue(fullResult);
+                lastFullTlaResult = fullResult;
+            }
+        }));
+    }
+
     private void updateDisplay() {
-        ovenImage.setSrc(getImageSource());
-        timerDisplay.setText(String.format("%02d:%02d", fsm.getTimer() / 60, fsm.getTimer() % 60));
+        // Only update if state or timer changed
+        if (fsm.getState() != lastState) {
+            ovenImage.setSrc(getImageSource());
+            lastState = fsm.getState();
+        }
+        
+        if (fsm.getTimer() != lastTimer) {
+            timerDisplay.setText(String.format("%02d:%02d", fsm.getTimer() / 60, fsm.getTimer() % 60));
+            lastTimer = fsm.getTimer();
+        }
     }
 
     private Component createBtn(String label, Runnable action) {
@@ -177,6 +226,9 @@ public class MicrowaveControlView extends VerticalLayout {
     public void onDetach(DetachEvent detachEvent) {
         if (autoTick != null) {
             autoTick.cancel();
+        }
+        if (debounceTimer != null) {
+            debounceTimer.cancel();
         }
         super.onDetach(detachEvent);
     }
