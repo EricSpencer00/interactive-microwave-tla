@@ -1,6 +1,8 @@
 # Maven build output
 target/
-!target/maven-status/
+!.mvn/wrapper/maven-wrapper.jar
+!**/src/main/**/target/
+!**/src/test/**/target/
 
 # Node.js
 node/
@@ -41,6 +43,13 @@ frontend/generated/
 frontend/node_modules/
 frontend/package-lock.json
 frontend/yarn.lock
+node_modules/
+package-lock.json
+webpack.generated.js
+webpack.config.js
+tsconfig.json
+types.d.ts
+vite.generated.ts
 
 # Spring Boot specific
 spring-boot-devtools.restart.trigger
