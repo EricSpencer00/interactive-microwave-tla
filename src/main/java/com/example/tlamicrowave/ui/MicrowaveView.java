@@ -4,28 +4,27 @@ import com.example.tlamicrowave.model.MicrowaveState;
 import com.example.tlamicrowave.service.MicrowaveService;
 import com.vaadin.flow.component.UI;
 import com.vaadin.flow.component.button.Button;
+import com.vaadin.flow.component.dependency.JsModule;
 import com.vaadin.flow.component.html.Div;
 import com.vaadin.flow.component.html.H2;
+import com.vaadin.flow.component.notification.Notification;
+import com.vaadin.flow.component.notification.Notification.Position;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.router.Route;
-
 import jakarta.annotation.security.PermitAll;
-
 import org.springframework.beans.factory.annotation.Autowired;
-
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 
-import com.vaadin.flow.component.PollEvent;
-
 @Route("")
 @PermitAll
+@JsModule("./microwave-graphic.ts")
 public class MicrowaveView extends VerticalLayout {
     private final MicrowaveService service;
     private final Div timerDisplay;
-    private final Div display;
     private final Div verificationPanel;
     private final UI ui;
+    private final MicrowaveGraphic graphic;
 
     @Autowired
     public MicrowaveView(MicrowaveService service) {
@@ -43,16 +42,8 @@ public class MicrowaveView extends VerticalLayout {
         timerDisplay.getStyle().set("font-size", "1.2em");
         timerDisplay.getStyle().set("margin-bottom", "1em");
 
-        // 2) Microwave display
-        display = new Div();
-        display.addClassName("microwave-display");
-        display.getStyle().set("font-size", "2em");
-        display.getStyle().set("padding", "1em");
-        display.getStyle().set("border", "2px solid #ccc");
-        display.getStyle().set("border-radius", "10px");
-        display.getStyle().set("background", "#f5f5f5");
-        display.getStyle().set("min-width", "200px");
-        display.getStyle().set("text-align", "center");
+        // 2) Microwave graphic
+        graphic = new MicrowaveGraphic();
 
         // 3) Controls
         Button incrementButton = new Button("+1s", e -> { service.incrementTime(); updateUI(); });
@@ -74,18 +65,15 @@ public class MicrowaveView extends VerticalLayout {
 
         // assemble
         add(timerDisplay);
-        add(display);
+        add(graphic);
         add(new VerticalLayout(incrementButton, startButton, cancelButton, doorButton, tickButton, stopBeepButton));
         add(new H2("TLC Verification Output"));
         add(verificationPanel);
 
-        // --- new: enable server-side polling every second ---
+        // Enable server-side polling
         ui.setPollInterval(1_000);
-        ui.addPollListener((PollEvent event) -> {
-            // update the clock
-            timerDisplay.setText(LocalTime.now()
-                .format(DateTimeFormatter.ofPattern("HH:mm:ss")));
-            // refresh microwave display & log
+        ui.addPollListener(event -> {
+            timerDisplay.setText(LocalTime.now().format(DateTimeFormatter.ofPattern("HH:mm:ss")));
             updateUI();
         });
 
@@ -97,20 +85,24 @@ public class MicrowaveView extends VerticalLayout {
         ui.access(() -> {
             MicrowaveState state = service.getState();
 
-            // update microwave readout
-            String displayText = String.format("%02d", state.getTimeRemaining());
-            if (state.getDoor() == MicrowaveState.DoorState.OPEN) {
-                displayText += " DOOR OPEN";
-            }
-            if (state.getRadiation() == MicrowaveState.RadiationState.ON) {
-                displayText += " HEATING";
-            }
-            if (state.getBeep() == MicrowaveState.BeepState.ON) {
-                displayText += " BEEPING";
-            }
-            display.setText(displayText);
+            // Update microwave graphic
+            graphic.getElement().setProperty("doorOpen", state.getDoor() == MicrowaveState.DoorState.OPEN);
+            graphic.getElement().setProperty("heating", state.getRadiation() == MicrowaveState.RadiationState.ON);
+            graphic.getElement().setProperty("beeping", state.getBeep() == MicrowaveState.BeepState.ON);
+            graphic.getElement().setProperty("time", state.getTimeRemaining());
 
-            // update verification log
+            // Check safety violations
+            if (state.isDoorSafetyViolated()) {
+                Notification.show("⚠️ Door Safety Violated!", 3_000, Position.TOP_END);
+            }
+            if (state.isBeepSafetyViolated()) {
+                Notification.show("⚠️ Beep Safety Violated!", 3_000, Position.TOP_END);
+            }
+            if (state.isRadiationSafetyViolated()) {
+                Notification.show("⚠️ Radiation Safety Violated!", 3_000, Position.TOP_END);
+            }
+
+            // Update verification log
             verificationPanel.removeAll();
             service.getVerificationLog().forEach(log -> {
                 Div entry = new Div(log);

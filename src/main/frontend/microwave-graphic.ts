@@ -3,81 +3,105 @@ import { customElement, property } from 'lit/decorators.js';
 
 @customElement('microwave-graphic')
 export class MicrowaveGraphic extends LitElement {
-  @property({ type: Boolean }) doorOpen = false;
-  @property({ type: Boolean }) heating = false;
-  @property({ type: Number }) time = 0;
-
   static styles = css`
     :host {
       display: block;
-      width: 400px;
-      height: 220px;
+      width: 300px;
+      height: 200px;
+      background: #f0f0f0;
+      border: 2px solid #333;
+      border-radius: 10px;
       position: relative;
-      border: 6px solid #444;
-      border-radius: 12px;
-      background: #eee;
-      box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+      overflow: hidden;
     }
+
     .door {
       position: absolute;
-      top: 10%;
-      left: 5%;
-      width: 55%;
-      height: 80%;
-      background: linear-gradient(145deg, #f5f5f5, #ddd);
-      border: 3px inset #999;
-      transform-origin: left center;
-      transition: transform 0.5s ease;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: #ddd;
+      transform-origin: left;
+      transition: transform 0.3s ease-in-out;
     }
-    :host([doorOpen]) .door {
-      transform: perspective(300px) rotateY(-75deg);
-    }
-    .timer {
-      position: absolute;
-      top: 16px;
-      right: 16px;
-      width: 72px;
-      height: 32px;
-      background: #222;
-      color: #0f0;
-      font-family: monospace;
-      font-size: 1.1rem;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      border-radius: 4px;
-    }
-    .wave {
-      position: absolute;
-      width: 36px;
-      height: 16px;
-      border-radius: 50%/60%;
-      background: linear-gradient(90deg, #ff5722 60%, transparent);
-      opacity: 0;
-      animation: wave 1s infinite ease-in-out;
-    }
-    .wave:nth-child(1) { top: 35%; left: 23%; animation-delay: 0s }
-    .wave:nth-child(2) { top: 53%; left: 33%; animation-delay: 0.2s }
-    .wave:nth-child(3) { top: 71%; left: 43%; animation-delay: 0.4s }
 
-    @keyframes wave {
-      0%   { opacity: 0 }
-      50%  { opacity: 1; transform: translateX(8px) }
-      100% { opacity: 0; transform: translateX(16px) }
+    .door.open {
+      transform: rotateY(-90deg);
     }
-    :host([heating]) .wave { display: block }
-    :host(:not([heating])) .wave { display: none }
+
+    .display {
+      position: absolute;
+      top: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #000;
+      color: #0f0;
+      padding: 10px 20px;
+      border-radius: 5px;
+      font-family: monospace;
+      font-size: 24px;
+      z-index: 2;
+    }
+
+    .waves {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 80%;
+      height: 60%;
+      background: repeating-linear-gradient(
+        45deg,
+        rgba(255, 0, 0, 0.1),
+        rgba(255, 0, 0, 0.1) 10px,
+        rgba(255, 0, 0, 0.2) 10px,
+        rgba(255, 0, 0, 0.2) 20px
+      );
+      opacity: 0;
+      transition: opacity 0.3s ease-in-out;
+      z-index: 1;
+    }
+
+    .waves.active {
+      opacity: 1;
+    }
+
+    .beep {
+      position: absolute;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      color: #f00;
+      font-size: 20px;
+      opacity: 0;
+      transition: opacity 0.5s ease-in-out;
+      z-index: 2;
+    }
+
+    .beep.active {
+      opacity: 1;
+      animation: blink 1s infinite;
+    }
+
+    @keyframes blink {
+      0% { opacity: 1; }
+      50% { opacity: 0; }
+      100% { opacity: 1; }
+    }
   `;
 
+  @property({ type: Boolean }) doorOpen = false;
+  @property({ type: Boolean }) heating = false;
+  @property({ type: Boolean }) beeping = false;
+  @property({ type: Number }) time = 0;
+
   render() {
-    const mm = String(Math.floor(this.time/60)).padStart(2,'0');
-    const ss = String(this.time%60).padStart(2,'0');
     return html`
-      <div class="door"></div>
-      <div class="timer">${mm}:${ss}</div>
-      <div class="wave"></div>
-      <div class="wave"></div>
-      <div class="wave"></div>
+      <div class="door ${this.doorOpen ? 'open' : ''}"></div>
+      <div class="display">${String(this.time).padStart(2, '0')}</div>
+      <div class="waves ${this.heating ? 'active' : ''}"></div>
+      <div class="beep ${this.beeping ? 'active' : ''}">BEEP!</div>
     `;
   }
 }
