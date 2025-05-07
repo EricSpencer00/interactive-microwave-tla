@@ -7,21 +7,22 @@ import java.util.TimerTask;
 
 import com.example.microwave.fsm.MicrowaveFSM;
 import com.example.microwave.service.TlaSpecService;
-import com.vaadin.flow.component.UI;
+import com.vaadin.flow.component.Component;
+import com.vaadin.flow.component.ComponentEventListener;
+import com.vaadin.flow.component.DetachEvent;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.html.Div;
 import com.vaadin.flow.component.html.Image;
-import com.vaadin.flow.component.html.Span;
 import com.vaadin.flow.component.orderedlayout.FlexComponent.Alignment;
 import com.vaadin.flow.component.orderedlayout.FlexComponent.JustifyContentMode;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.component.textfield.TextArea;
+import com.vaadin.flow.server.StreamResource;
 
 /**
- * MicrowaveControlView now uses distinct images for each state:
- * closed_off, closed_on, open_off, open_on.
- * Clicking the oven toggles the door; cooking animation is shown by the image names.
+ * MicrowaveControlView uses hardcoded images for each state,
+ * a Tick button, and no safety/liveness labels.
  */
 public class MicrowaveControlView extends VerticalLayout {
     private final MicrowaveFSM fsm;
@@ -42,17 +43,7 @@ public class MicrowaveControlView extends VerticalLayout {
         setPadding(true);
         setSpacing(true);
 
-        // Safety/Liveness labels
-        HorizontalLayout tags = new HorizontalLayout(
-            styledLabel("Safety: door=OPEN ⇒ rad=OFF", "#FFA726"),
-            styledLabel("Liveness: ON ⇒ OFF", "#FFF176"),
-            styledLabel("Safety: rad=ON ⇒ door=CLOSED", "#FFA726")
-        );
-        tags.setJustifyContentMode(JustifyContentMode.CENTER);
-        tags.setSpacing(true);
-        add(tags);
-
-        // Oven image placeholder
+        // Oven image
         ovenImage = new Image(getImageSource(), "Microwave");
         ovenImage.setWidth("400px");
         ovenImage.setHeight("250px");
@@ -62,12 +53,15 @@ public class MicrowaveControlView extends VerticalLayout {
         // Timer display
         timerDisplay = new Div();
         timerDisplay.getStyle()
-            .set("background", "#333").set("color", "#FFF")
-            .set("padding", "4px 8px").set("borderRadius", "4px")
-            .set("fontSize", "1.2rem");
+            .set("background", "#333")
+            .set("color", "#FFF")
+            .set("padding", "4px 8px")
+            .set("borderRadius", "4px")
+            .set("fontSize", "1.2rem")
+            .set("fontFamily", "monospace");
         add(timerDisplay);
 
-        // Controls
+        // Controls row with Tick button
         HorizontalLayout ctrls = new HorizontalLayout();
         ctrls.setJustifyContentMode(JustifyContentMode.CENTER);
         ctrls.setSpacing(true);
@@ -75,23 +69,36 @@ public class MicrowaveControlView extends VerticalLayout {
             createBtn("+10s", () -> perform("IncTime", fsm.addTime(10))),
             createBtn("Start", () -> perform("Start", fsm.startCooking())),
             createBtn("Pause", () -> perform("Cancel", fsm.stopClock())),
-            createBtn("Reset", () -> perform("Cancel", fsm.resetClock()))
+            createBtn("Reset", () -> perform("Cancel", fsm.resetClock())),
+            createBtn("Tick", () -> perform("Tick", fsm.tick()))
         );
         add(ctrls);
 
-        // TLC output panel
+        // TLC output panels
         tlaCheck = new TextArea("TLC Check");
         tlaCheck.setWidth("80%");
         tlaCheck.setReadOnly(true);
+        tlaCheck.setMaxHeight("200px");
         add(tlaCheck);
+
         fullTla = new TextArea("Full TLC Output");
         fullTla.setWidth("80%");
         fullTla.setReadOnly(true);
-        fullTla.setVisible(false);
+        fullTla.setMaxHeight("200px");
         add(fullTla);
 
-        // Initialize view
-        updateView();
+        // Start auto-tick timer
+        startAutoTick();
+
+        // Initial state update
+        updateDisplay();
+    }
+
+    private StreamResource getImageSource() {
+        String imageName = fsm.getState() == MicrowaveFSM.State.DOOR_OPEN ? 
+            "microwave_open.png" : "microwave_closed.png";
+        return new StreamResource(imageName, () -> 
+            getClass().getResourceAsStream("/static/images/" + imageName));
     }
 
     private void toggleDoor() {
@@ -102,60 +109,46 @@ public class MicrowaveControlView extends VerticalLayout {
         }
     }
 
-    private void perform(String action, String msg) {
-        trace.add(new Trace(fsm.getState(), fsm.getTimer(), action));
-        String out = tla.validateTransition(action, fsm);
-        tlaCheck.setValue(out);
-        fullTla.setValue(out);
-        fullTla.setVisible(false);
-        scheduleTick();
-        updateView();
-    }
-
-    private void scheduleTick() {
-        if (autoTick != null) autoTick.cancel();
-        if (fsm.getState() == MicrowaveFSM.State.COOKING && fsm.getTimer() > 0) {
-            autoTick = new Timer();
-            autoTick.scheduleAtFixedRate(new TimerTask() {
-                public void run() {
-                    UI.getCurrent().access(() -> perform("Tick", fsm.tick()));
-                }
-            }, 1000, 1000);
+    private void perform(String action, String result) {
+        if (result != null && !result.startsWith("Cannot")) {
+            String tlaResult = tla.validateTransition(action, fsm);
+            tlaCheck.setValue(tlaResult);
+            fullTla.setValue(tla.runTLC(tla.loadDefaultSpec(), tla.loadDefaultCfg()));
+            updateDisplay();
         }
     }
 
-    private void updateView() {
+    private void updateDisplay() {
         ovenImage.setSrc(getImageSource());
-        int t = fsm.getTimer();
-        timerDisplay.setText(String.format("%02d:%02d", t/60, t%60));
+        timerDisplay.setText(String.format("%02d:%02d", fsm.getTimer() / 60, fsm.getTimer() % 60));
     }
 
-    private String getImageSource() {
-        String door = (fsm.getState() == MicrowaveFSM.State.DOOR_OPEN) ? "open" : "closed";
-        String rad  = fsm.isRadiationOn() ? "on" : "off";
-        return "frontend/images/microwave_" + door + "_" + rad + ".png";
+    private Component createBtn(String label, Runnable action) {
+        Button btn = new Button(label);
+        btn.addClickListener(e -> action.run());
+        return btn;
     }
 
-    private Span styledLabel(String txt, String bg) {
-        Span s = new Span(txt);
-        s.getStyle()
-         .set("background", bg)
-         .set("color", "#000")
-         .set("padding", "6px")
-         .set("borderRadius", "4px")
-         .set("white-space", "pre");
-        return s;
+    private void startAutoTick() {
+        autoTick = new Timer();
+        autoTick.scheduleAtFixedRate(new TimerTask() {
+            @Override
+            public void run() {
+                if (fsm.getState() == MicrowaveFSM.State.COOKING) {
+                    getUI().ifPresent(ui -> ui.access(() -> {
+                        perform("Tick", fsm.tick());
+                    }));
+                }
+            }
+        }, 1000, 1000);
     }
 
-    private Button createBtn(String text, Runnable action) {
-        Button b = new Button(text, e -> action.run());
-        b.getStyle()
-         .set("background", "#FFA726")
-         .set("color", "#FFF")
-         .set("border", "none")
-         .set("borderRadius", "4px")
-         .set("padding", "0.5rem 1rem");
-        return b;
+    @Override
+    public void onDetach(DetachEvent detachEvent) {
+        if (autoTick != null) {
+            autoTick.cancel();
+        }
+        super.onDetach(detachEvent);
     }
 
     private static class Trace {

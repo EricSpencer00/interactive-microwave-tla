@@ -19,17 +19,22 @@ jobs:
       - name: Set up JDK
         uses: actions/setup-java@v3
         with:
-          java-version: '17' # Use the desired Java version
+          java-version: '17'
           distribution: 'temurin'
 
-      # Step 3: Compile Java code
-      - name: Compile Java code
-        run: |
-          mkdir -p build
-          javac -d build $(find . -name "*.java")
+      # Step 3: Set up Maven
+      - name: Set up Maven
+        uses: stCarolas/setup-maven@v4
+        with:
+          maven-version: '3.9.6'
 
-      # Step 4: Run Checkstyle linter
+      # Step 4: Build with Maven
+      - name: Build with Maven
+        run: mvn clean verify
+
+      # Step 5: Run Checkstyle linter
       - name: Run Checkstyle
         run: |
           curl -LJO https://github.com/checkstyle/checkstyle/releases/download/checkstyle-10.12.3/checkstyle-10.12.3-all.jar
-          java -jar checkstyle-10.12.3-all.jar -c /google_checks.xml $(find . -name "*.java")
+          curl -LJO https://raw.githubusercontent.com/checkstyle/checkstyle/master/src/main/resources/google_checks.xml
+          java -jar checkstyle-10.12.3-all.jar -c google_checks.xml src/main/java/**/*.java
