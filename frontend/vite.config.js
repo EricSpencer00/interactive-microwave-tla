@@ -14,11 +14,11 @@ export default defineConfig(({ mode }) => ({
     }),
   ].filter(Boolean),
   build: {
-    outDir: '../src/main/resources/META-INF/resources/frontend',
+    outDir: '../src/main/resources/META-INF/resources',
     emptyOutDir: true,
     rollupOptions: {
       input: {
-        main: resolve(__dirname, 'src/main.js')
+        main: resolve(__dirname, 'index.html')
       },
       output: {
         manualChunks: {
