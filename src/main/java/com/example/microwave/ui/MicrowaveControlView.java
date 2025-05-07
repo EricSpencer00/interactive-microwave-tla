@@ -1,7 +1,13 @@
 package com.example.microwave.ui;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Timer;
+import java.util.TimerTask;
+
 import com.example.microwave.fsm.MicrowaveFSM;
 import com.example.microwave.service.TlaSpecService;
+import com.vaadin.flow.component.UI;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.html.Div;
 import com.vaadin.flow.component.html.Span;
@@ -9,11 +15,6 @@ import com.vaadin.flow.component.orderedlayout.FlexComponent.Alignment;
 import com.vaadin.flow.component.orderedlayout.FlexComponent.JustifyContentMode;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
-import com.vaadin.flow.component.UI;
-import java.util.Timer;
-import java.util.TimerTask;
-import java.util.ArrayList;
-import java.util.List;
 
 public class MicrowaveControlView extends HorizontalLayout {
     private final MicrowaveFSM microwaveFSM;
@@ -106,34 +107,70 @@ public class MicrowaveControlView extends HorizontalLayout {
     }
 
     private Div buildMicrowaveGraphic() {
-        // Microwave dimensions
-        int mwWidth = 400;
-        int mwHeight = 220;
+        int mwWidth = 400, mwHeight = 220;
         Div container = new Div();
-        container.getStyle().set("position", "relative");
-        container.getStyle().set("width", mwWidth + "px");
-        container.getStyle().set("height", mwHeight + "px");
-        container.getStyle().set("background", "#f0f0f0");
-        container.getStyle().set("border", "4px solid orange");
-        container.getStyle().set("borderRadius", "12px");
-        container.getStyle().set("boxShadow", "0 4px 24px #ff980033");
+        container.getStyle()
+        .set("position", "relative")
+        .set("width", mwWidth + "px")
+        .set("height", mwHeight + "px")
+        .set("background", "#f0f0f0")
+        .set("border", "4px solid orange")
+        .set("borderRadius", "12px")
+        .set("boxShadow", "0 4px 24px #ff980033");
 
-        // Timer display (on box, above button panel)
+        // ─── Safety / Liveness Labels ─────────────────────────────────────────────
+        Span safetyDoor = new Span("Safety\ndoor = OPEN ⇒ radiation = OFF");
+        safetyDoor.getStyle().set("position", "absolute")
+                        .set("top", "10px")
+                        .set("left", "10px")
+                        .set("background", "orange")
+                        .set("color", "black")
+                        .set("padding", "6px")
+                        .set("borderRadius", "6px")
+                        .set("whiteSpace", "pre-line")
+                        .set("fontSize", "0.85rem");
+        container.add(safetyDoor);
+
+        Span liveness = new Span("Liveness\nradiation = ON ⇒ radiation = OFF");
+        liveness.getStyle().set("position", "absolute")
+                        .set("top", "10px")
+                        .set("left", (mwWidth/2 - 60) + "px")
+                        .set("background", "yellow")
+                        .set("color", "black")
+                        .set("padding", "6px")
+                        .set("borderRadius", "6px")
+                        .set("whiteSpace", "pre-line")
+                        .set("fontSize", "0.85rem");
+        container.add(liveness);
+
+        Span safetyRad = new Span("Safety\nradiation = ON ⇒ door = CLOSED");
+        safetyRad.getStyle().set("position", "absolute")
+                            .set("top", "10px")
+                            .set("right", "10px")
+                            .set("background", "orange")
+                            .set("color", "black")
+                            .set("padding", "6px")
+                            .set("borderRadius", "6px")
+                            .set("whiteSpace", "pre-line")
+                            .set("fontSize", "0.85rem");
+        container.add(safetyRad);
+
+        // ─── Timer display ────────────────────────────────────────────────────────
         timerDisplayBox = new Div();
-        timerDisplayBox.getStyle().set("position", "absolute");
-        timerDisplayBox.getStyle().set("top", "18px");
-        timerDisplayBox.getStyle().set("right", "50px");
-        timerDisplayBox.getStyle().set("width", "80px");
-        timerDisplayBox.getStyle().set("height", "36px");
-        timerDisplayBox.getStyle().set("background", "#222");
-        timerDisplayBox.getStyle().set("color", "#fff");
-        timerDisplayBox.getStyle().set("display", "flex");
-        timerDisplayBox.getStyle().set("alignItems", "center");
-        timerDisplayBox.getStyle().set("justifyContent", "center");
-        timerDisplayBox.getStyle().set("fontWeight", "bold");
-        timerDisplayBox.getStyle().set("fontSize", "1.5rem");
-        timerDisplayBox.getStyle().set("borderRadius", "8px");
-        timerDisplayBox.getStyle().set("boxShadow", "0 1px 6px #0002");
+        timerDisplayBox.getStyle().set("position", "absolute")
+                                .set("top", "50px")
+                                .set("right", "50px")
+                                .set("width", "80px")
+                                .set("height", "36px")
+                                .set("background", "#222")
+                                .set("color", "#fff")
+                                .set("display", "flex")
+                                .set("alignItems", "center")
+                                .set("justifyContent", "center")
+                                .set("fontWeight", "bold")
+                                .set("fontSize", "1.5rem")
+                                .set("borderRadius", "8px")
+                                .set("boxShadow", "0 1px 6px #0002");
         timerDisplayBox.setText("00:00");
         container.add(timerDisplayBox);
 
