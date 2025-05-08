@@ -55,5 +55,6 @@ vite.generated.ts
 spring-boot-devtools.restart.trigger
 
 flattened/
-frontend/
+frontend/generated
 /flattened
+src/main/frontend
