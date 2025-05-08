@@ -15,7 +15,7 @@ import jakarta.annotation.security.PermitAll;
 import org.springframework.beans.factory.annotation.Autowired;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
-
+import java.util.stream.Stream;
 @Route("")
 @PermitAll
 @JsModule("./microwave-graphic.ts")
@@ -53,20 +53,28 @@ public class MicrowaveView extends VerticalLayout {
         Button tickButton      = new Button("Tick", e -> { service.manualTick();  updateUI(); });
         Button stopBeepButton  = new Button("Stop Beep", e -> { service.stopBeep(); updateUI(); });
 
-        // 4) Verification panel
+        // // 4) Verification panel
         verificationPanel = new Div();
         verificationPanel.addClassName("verification-panel");
         verificationPanel.getStyle().set("margin-top", "2em");
         verificationPanel.getStyle().set("padding", "1em");
         verificationPanel.getStyle().set("border", "1px solid #ddd");
         verificationPanel.getStyle().set("border-radius", "5px");
-        verificationPanel.getStyle().set("max-height", "200px");
+        // verificationPanel.getStyle().set("max-height", "200px");
         verificationPanel.getStyle().set("overflow-y", "auto");
+        verificationPanel.setHeight("200px");
+        verificationPanel.getStyle().set("overflow-y", "auto");
+        verificationPanel.getStyle().set("min-height", "200px");
 
+        Stream.of(incrementButton, startButton, cancelButton, doorButton, tickButton, stopBeepButton)
+            .forEach(btn -> {
+                btn.getElement().setAttribute("slot", "buttons");
+                graphic.getElement().appendChild(btn.getElement());
+            });
         // assemble
         add(timerDisplay);
         add(graphic);
-        add(new VerticalLayout(incrementButton, startButton, cancelButton, doorButton, tickButton, stopBeepButton));
+        // add(new VerticalLayout(incrementButton, startButton, cancelButton, doorButton, tickButton, stopBeepButton));
         add(new H2("TLC Verification Output"));
         add(verificationPanel);
 
