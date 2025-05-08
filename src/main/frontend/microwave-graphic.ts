@@ -89,38 +89,47 @@ export class MicrowaveGraphic extends LitElement {
       border-left: none;
     }
 
-    /* your tint-overlay, only for “heating” */
-    /* actual glass pane */
     .door-window {
       position: absolute;
-      left: 20%; top: 25%;
-      width: 60%; height: 50%;
-      
-      /* light frosted glass */
-      background: rgba(255, 255, 255, 0.15);
-      backdrop-filter: blur(2px);
-      border: 1px solid rgba(255, 255, 255, 0.4);
+      left: 15%;
+      top: 20%;
+      width: 70%;
+      height: 60%;
+    
+      /* frosted curved glass */
+      background: rgba(255,255,255,0.2);
+      background-image:
+        linear-gradient(
+          rgba(255,255,255,0.15),
+          rgba(255,255,255,0.05)
+        );
+      backdrop-filter: blur(4px);
+    
+      /* subtle thicker border & depth */
+      border: 2px solid rgba(255,255,255,0.6);
       box-shadow:
-        inset 0 0 8px rgba(0,0,0,0.1),    /* inner depth */
-        0 2px 4px rgba(0,0,0,0.1);         /* subtle outer shadow */
-
-      border-radius: 6px;
+        inset 0 0 6px rgba(0,0,0,0.2),
+        0 1px 2px rgba(0,0,0,0.1);
+    
+      border-radius: 8px;
       z-index: 3;
       pointer-events: none;
       overflow: hidden;
     }
-
-    /* little glossy highlight stripe */
+    
     .door-window::before {
       content: '';
       position: absolute;
-      top: 8%; left: 10%;
-      width: 80%; height: 12%;
-      background: rgba(255,255,255,0.4);
-      transform: skewX(-20deg);
-      border-radius: 50%;
+      top: 6%;
+      left: 12%;
+      width: 76%;
+      height: 8%;
+      background: rgba(255,255,255,0.5);
+      transform: skewX(-25deg);
+      border-radius: 50%/20%;
       pointer-events: none;
     }
+    
 
     /* red tint on heating */
     .door-window.heating {
