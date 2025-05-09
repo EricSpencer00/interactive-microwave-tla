@@ -96,8 +96,10 @@ export class MicrowaveGraphic extends LitElement {
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      gap: 8px;
+      gap: 4px;
       padding: 0 8px;
+      border: 1px solid #333;
+      border-radius: 4px;
     }
   `;
   @property({ type: Boolean }) doorOpen = false;

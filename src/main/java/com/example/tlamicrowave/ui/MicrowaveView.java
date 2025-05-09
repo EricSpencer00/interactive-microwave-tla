@@ -50,7 +50,7 @@ public class MicrowaveView extends VerticalLayout {
         Button startButton     = new Button("Start", e -> { service.start();       updateUI(); });
         Button cancelButton    = new Button("Cancel", e -> { service.cancel();     updateUI(); });
         Button doorButton      = new Button("Open/Close Door", e -> { service.toggleDoor(); updateUI(); });
-        Button tickButton      = new Button("Tick", e -> { service.manualTick();  updateUI(); });
+        // Button tickButton      = new Button("Tick", e -> { service.manualTick();  updateUI(); });
         Button stopBeepButton  = new Button("Stop Beep", e -> { service.stopBeep(); updateUI(); });
 
         // // 4) Verification panel
@@ -66,7 +66,7 @@ public class MicrowaveView extends VerticalLayout {
         verificationPanel.getStyle().set("overflow-y", "auto");
         verificationPanel.getStyle().set("min-height", "200px");
 
-        Stream.of(incrementButton, startButton, cancelButton, doorButton, tickButton, stopBeepButton)
+        Stream.of(incrementButton, startButton, cancelButton, doorButton, stopBeepButton)
             .forEach(btn -> {
                 btn.getElement().setAttribute("slot", "buttons");
                 graphic.getElement().appendChild(btn.getElement());

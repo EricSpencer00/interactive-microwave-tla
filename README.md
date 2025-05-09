@@ -17,6 +17,8 @@ This is a Spring Boot + Vaadin application that simulates a microwave oven with 
 
 ## Running the Application
 
+MAKE SURE THAT VAADIN PRODUCTION MODE IS TURNED ON IN THE APPLICATION PROPERTIES FILE
+
 1. Clone the repository
 2. Navigate to the project directory
 3. Run the application:
