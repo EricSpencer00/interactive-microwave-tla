@@ -12,15 +12,10 @@ export class MicrowaveGraphic extends LitElement {
       border: 2px solid #333;
       border-radius: 10px;
       overflow: hidden;
-
-      /* 75% for door, 25% for controls */
       grid-template-columns: 3fr 1fr;
-      /* single row layout */
       grid-template-rows: auto 1fr;
-      gap: 0;
     }
 
-    /* Door takes the full left side (all rows) */
     .door {
       grid-column: 1;
       grid-row: 1 / span 2;
@@ -33,7 +28,7 @@ export class MicrowaveGraphic extends LitElement {
       transform: rotateY(-90deg);
     }
 
-    /* Timer/display in top-right cell */
+    /* digit box */
     .display {
       grid-column: 2;
       grid-row: 1;
@@ -47,9 +42,11 @@ export class MicrowaveGraphic extends LitElement {
       font-size: 18px;
       margin: 8px;
       z-index: 2;
+      /* ensure fixed size so digits never push layout */
+      min-width: 60px;
+      text-align: center;
     }
 
-    /* Waves overlay inside the door area */
     .waves {
       position: absolute;
       top: 50%;
@@ -72,7 +69,6 @@ export class MicrowaveGraphic extends LitElement {
       opacity: 1;
     }
 
-    /* Beep indicator under the door area */
     .beep {
       position: absolute;
       bottom: 10px;
@@ -93,7 +89,6 @@ export class MicrowaveGraphic extends LitElement {
       50% { opacity: 0; }
     }
 
-    /* Controls slot on the right, middle cell */
     .controls {
       grid-column: 2;
       grid-row: 2;
@@ -109,7 +104,15 @@ export class MicrowaveGraphic extends LitElement {
   @property({ type: Boolean }) doorOpen = false;
   @property({ type: Boolean }) heating = false;
   @property({ type: Boolean }) beeping = false;
-  @property({ type: Number }) time = 0;
+  @property({ type: Number }) time = 0;  // in seconds
+
+  private formatTime(seconds: number): string {
+    const m = Math.floor(seconds / 60);
+    const s = seconds % 60;
+    const mm = String(m).padStart(2, '0');
+    const ss = String(s).padStart(2, '0');
+    return `${mm}:${ss}`;
+  }
 
   render() {
     return html`
@@ -117,9 +120,8 @@ export class MicrowaveGraphic extends LitElement {
         <div class="waves ${this.heating ? 'active' : ''}"></div>
         <div class="beep ${this.beeping ? 'active' : ''}">BEEP!</div>
       </div>
-      <div class="display">${String(this.time).padStart(2, '0')}</div>
+      <div class="display">${this.formatTime(this.time)}</div>
       <div class="controls">
-        <!-- Expect your buttons to be slotted in from the outside -->
         <slot name="buttons"></slot>
       </div>
     `;
