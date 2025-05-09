@@ -100,27 +100,40 @@ export class MicrowaveGraphic extends LitElement {
       padding: 0 8px;
     }
   `;
-
   @property({ type: Boolean }) doorOpen = false;
   @property({ type: Boolean }) heating = false;
   @property({ type: Boolean }) beeping = false;
-  @property({ type: Number }) time = 0;  // in seconds
+  @property({ type: Number }) time = 0;  // seconds remaining
 
-  private formatTime(seconds: number): string {
+  private formatClock(): string {
+    const now = new Date();
+    const hh = String(now.getHours()).padStart(2, '0');
+    const mm = String(now.getMinutes()).padStart(2, '0');
+    return `${hh}:${mm}`;
+  }
+
+  private formatCountdown(seconds: number): string {
     const m = Math.floor(seconds / 60);
     const s = seconds % 60;
-    const mm = String(m).padStart(2, '0');
-    const ss = String(s).padStart(2, '0');
-    return `${mm}:${ss}`;
+    return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
   }
 
   render() {
+    const displayText =
+      this.time > 0
+        ? this.formatCountdown(this.time)
+        : this.formatClock();
+
     return html`
       <div class="door ${this.doorOpen ? 'open' : ''}">
         <div class="waves ${this.heating ? 'active' : ''}"></div>
         <div class="beep ${this.beeping ? 'active' : ''}">BEEP!</div>
       </div>
-      <div class="display">${this.formatTime(this.time)}</div>
+
+      <div class="display">
+        ${displayText}
+      </div>
+
       <div class="controls">
         <slot name="buttons"></slot>
       </div>
