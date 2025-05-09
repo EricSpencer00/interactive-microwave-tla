@@ -12,7 +12,7 @@ export class MicrowaveGraphic extends LitElement {
       border: 2px solid #333;
       border-radius: 10px;
       overflow: hidden;
-      grid-template-columns: 3fr 1fr;
+      grid-template-columns: 2fr 1fr;
       grid-template-rows: auto 1fr;
     }
 
@@ -89,30 +89,61 @@ export class MicrowaveGraphic extends LitElement {
       50% { opacity: 0; }
     }
     .controls {
+      grid-column: 2;
+      grid-row: 2;
       display: grid;
-      grid-template-columns: repeat(2, 1fr);
-      grid-template-rows: repeat(2, auto);
+      grid-template-columns: 1fr 1fr;
+      grid-template-rows: 1fr 1fr;
       gap: 8px;
       padding: 8px;
+      border: 1px solid #333;
+      border-radius: 4px;
+      margin: 8px;
+      min-width: 120px;
     }
 
-    /* place each slotted button based on its index */
-    .controls ::slotted(*:nth-child(1)) { grid-area: 1 / 1; }
-    .controls ::slotted(*:nth-child(2)) { grid-area: 1 / 2; }
-    .controls ::slotted(*:nth-child(3)) { grid-area: 2 / 1; }
-    .controls ::slotted(*:nth-child(4)) { grid-area: 2 / 2; }
-
-    .controls ::slotted(button:nth-child(2)) {
-      background-color: #38a169;   /* green */
-      color: white;
-    }
-    .controls ::slotted(button:nth-child(3)) {
-      background-color: #e53e3e;   /* red */
-      color: white;
-    }
-    .controls ::slotted(*) {
+    /* Style for all buttons */
+    .controls ::slotted(button) {
       width: 100%;
-      box-sizing: border-box;
+      height: 100%;
+      padding: 8px;
+      border: 2px solid #333;
+      border-radius: 4px;
+      font-weight: bold;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    /* Style for +3s and door buttons */
+    .controls ::slotted(button:nth-child(1)),
+    .controls ::slotted(button:nth-child(4)) {
+      background-color: white;
+      color: #333;
+    }
+
+    /* Style for start button */
+    .controls ::slotted(button:nth-child(2)) {
+      background-color: #38a169;
+      color: white;
+      border-color: #2f855a;
+    }
+
+    /* Style for cancel button */
+    .controls ::slotted(button:nth-child(3)) {
+      background-color: #e53e3e;
+      color: white;
+      border-color: #c53030;
+    }
+
+    /* Hover effects */
+    .controls ::slotted(button:hover) {
+      transform: translateY(-2px);
+      box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    }
+
+    .controls ::slotted(button:active) {
+      transform: translateY(0);
+      box-shadow: none;
     }
   `;
 
