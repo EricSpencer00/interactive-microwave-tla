@@ -119,10 +119,17 @@ export class MicrowaveGraphic extends LitElement {
   }
 
   render() {
-    const displayText =
-      this.time > 0
-        ? this.formatCountdown(this.time)
-        : this.formatClock();
+    let displayText: string;
+    if (this.beeping) {
+      // during beeps, always show 00:00
+      displayText = '00:00';
+    } else if (this.time > 0) {
+      // countdown mode
+      displayText = this.formatCountdown(this.time);
+    } else {
+      // idle: real clock
+      displayText = this.formatClock();
+    }
 
     return html`
       <div class="door ${this.doorOpen ? 'open' : ''}">
@@ -130,9 +137,7 @@ export class MicrowaveGraphic extends LitElement {
         <div class="beep ${this.beeping ? 'active' : ''}">BEEP!</div>
       </div>
 
-      <div class="display">
-        ${displayText}
-      </div>
+      <div class="display">${displayText}</div>
 
       <div class="controls">
         <slot name="buttons"></slot>
