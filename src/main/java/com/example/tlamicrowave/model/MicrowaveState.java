@@ -61,6 +61,7 @@ public class MicrowaveState {
     public void openDoor() {
         door = DoorState.OPEN;
         radiation = RadiationState.OFF;
+        beep = BeepState.OFF;
     }
 
     public void closeDoor() {
