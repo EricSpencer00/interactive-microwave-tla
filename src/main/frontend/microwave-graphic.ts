@@ -88,20 +88,34 @@ export class MicrowaveGraphic extends LitElement {
       0%,100% { opacity: 1; }
       50% { opacity: 0; }
     }
-
     .controls {
-      grid-column: 2;
-      grid-row: 2;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      gap: 4px;
-      padding: 0 8px;
-      border: 1px solid #333;
-      border-radius: 4px;
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      grid-template-rows: repeat(2, auto);
+      gap: 8px;
+      padding: 8px;
+    }
+
+    /* place each slotted button based on its index */
+    .controls ::slotted(*:nth-child(1)) { grid-area: 1 / 1; }
+    .controls ::slotted(*:nth-child(2)) { grid-area: 1 / 2; }
+    .controls ::slotted(*:nth-child(3)) { grid-area: 2 / 1; }
+    .controls ::slotted(*:nth-child(4)) { grid-area: 2 / 2; }
+
+    .controls ::slotted(button:nth-child(2)) {
+      background-color: #38a169;   /* green */
+      color: white;
+    }
+    .controls ::slotted(button:nth-child(3)) {
+      background-color: #e53e3e;   /* red */
+      color: white;
+    }
+    .controls ::slotted(*) {
+      width: 100%;
+      box-sizing: border-box;
     }
   `;
+
   @property({ type: Boolean }) doorOpen = false;
   @property({ type: Boolean }) heating = false;
   @property({ type: Boolean }) beeping = false;
