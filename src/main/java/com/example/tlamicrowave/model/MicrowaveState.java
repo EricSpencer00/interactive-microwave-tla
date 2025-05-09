@@ -29,7 +29,10 @@ public class MicrowaveState {
 
     public void incrementTime() {
         if (canIncrementTime()) {
-            timeRemaining++;
+            timeRemaining += 3;
+            if (timeRemaining > MAX_TIME) {
+                timeRemaining = MAX_TIME;
+            }
         }
     }
 

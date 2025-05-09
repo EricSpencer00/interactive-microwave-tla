@@ -46,11 +46,11 @@ public class MicrowaveView extends VerticalLayout {
         graphic = new MicrowaveGraphic();
 
         // 3) Controls
-        Button incrementButton = new Button("+1s", e -> { service.incrementTime(); updateUI(); });
+        Button incrementButton = new Button("+3s", e -> { service.incrementTime(); updateUI(); });
         Button startButton     = new Button("Start", e -> { service.start();       updateUI(); });
         Button cancelButton    = new Button("Cancel", e -> { service.cancel();     updateUI(); });
         Button doorButton      = new Button("Open/Close Door", e -> { service.toggleDoor(); updateUI(); });
-        // Button tickButton      = new Button("Tick", e -> { service.manualTick();  updateUI(); });
+        Button tickButton      = new Button("Tick", e -> { service.manualTick();  updateUI(); });
         Button stopBeepButton  = new Button("Stop Beep", e -> { service.stopBeep(); updateUI(); });
 
         // // 4) Verification panel

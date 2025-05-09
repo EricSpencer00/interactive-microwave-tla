@@ -35,7 +35,7 @@ MAKE SURE THAT VAADIN PRODUCTION MODE IS TURNED ON IN THE APPLICATION PROPERTIES
 - Time Remaining: 0-60 seconds
 
 ### Actions
-- Increment Time (+1s)
+- Increment Time (+3s)
 - Start
 - Cancel
 - Open/Close Door
