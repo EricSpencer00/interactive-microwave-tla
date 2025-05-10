@@ -52,18 +52,19 @@ public class MicrowaveView extends VerticalLayout {
         Button doorButton      = new Button("Open/Close Door", e -> { service.toggleDoor(); service.stopBeep(); updateUI(); });
         Button tickButton      = new Button("Tick", e -> { service.manualTick();  updateUI(); });
 
-        // // 4) Verification panel
+        // 4) Verification panel
         verificationPanel = new Div();
         verificationPanel.addClassName("verification-panel");
         verificationPanel.getStyle().set("margin-top", "2em");
         verificationPanel.getStyle().set("padding", "1em");
         verificationPanel.getStyle().set("border", "1px solid #ddd");
         verificationPanel.getStyle().set("border-radius", "5px");
-        // verificationPanel.getStyle().set("max-height", "200px");
+        verificationPanel.getStyle().set("font-family", "monospace");
+        verificationPanel.getStyle().set("white-space", "pre");
+        verificationPanel.setHeight("300px");
         verificationPanel.getStyle().set("overflow-y", "auto");
-        verificationPanel.setHeight("200px");
-        verificationPanel.getStyle().set("overflow-y", "auto");
-        verificationPanel.getStyle().set("min-height", "200px");
+        verificationPanel.getStyle().set("min-height", "300px");
+        verificationPanel.getStyle().set("background-color", "#f8f9fa");
 
         Stream.of(incrementButton, startButton, cancelButton, doorButton)
             .forEach(btn -> {
@@ -73,8 +74,7 @@ public class MicrowaveView extends VerticalLayout {
         // assemble
         add(timerDisplay);
         add(graphic);
-        // add(new VerticalLayout(incrementButton, startButton, cancelButton, doorButton, tickButton, stopBeepButton));
-        add(new H2("TLC Verification Output"));
+        add(new H2("TLA+ State Trace"));
         add(verificationPanel);
 
         // Enable server-side polling

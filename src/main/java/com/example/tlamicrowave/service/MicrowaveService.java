@@ -79,29 +79,29 @@ public class MicrowaveService {
     }
 
     private void logState(String action) {
-        String log = String.format("%s: (door=%s, time=%d, radiation=%s, beep=%s)",
-                action,
-                state.getDoor(),
-                state.getTimeRemaining(),
-                state.getRadiation(),
-                state.getBeep());
+        StringBuilder log = new StringBuilder();
+        log.append("State: ").append(action).append("\n");
+        log.append("/\\ door = ").append(state.getDoor()).append("\n");
+        log.append("/\\ time = ").append(state.getTimeRemaining()).append("\n");
+        log.append("/\\ radiation = ").append(state.getRadiation()).append("\n");
+        log.append("/\\ beep = ").append(state.getBeep()).append("\n");
         
         // Check safety properties
         if (state.isDoorSafetyViolated()) {
-            log += " [VIOLATION: Door Safety]";
+            log.append("/\\ [VIOLATION] ~(door = CLOSED => radiation = OFF)\n");
         }
         if (state.isBeepSafetyViolated()) {
-            log += " [VIOLATION: Beep Safety]";
+            log.append("/\\ [VIOLATION] ~(beep = ON => time = 0)\n");
         }
         if (state.isRadiationSafetyViolated()) {
-            log += " [VIOLATION: Radiation Safety]";
+            log.append("/\\ [VIOLATION] ~(radiation = ON => door = CLOSED)\n");
         }
         if (state.isDoorStateSafetyViolated()) {
-            log += " [VIOLATION: Door State Safety]";
+            log.append("/\\ [VIOLATION] ~(door = OPEN => radiation = OFF)\n");
         }
         
         logger.debug("State change: {}", log);
-        verificationLog.add(log);
+        verificationLog.add(log.toString());
     }
 
     private void pushUpdate() {
