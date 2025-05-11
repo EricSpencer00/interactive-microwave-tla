@@ -27,18 +27,91 @@ export class MicrowaveGraphic extends LitElement {
       grid-template-rows: auto 1fr;
     }
 
-    .door {
-      grid-column: 1;
-      grid-row: 1 / span 2;
-      background: #ddd;
-      position: relative;
-      transform-origin: left;
-      transition: transform 0.3s ease-in-out;
+    .food {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: calc(2 / 3 * 100%);
+      height: 100%;
+      background: url('/images/chicken+rice.png') center center / cover no-repeat;
+      z-index: 1;
+      pointer-events: none;
     }
 
+    /* the rotating “door” container */
+    .door {
+      position: absolute;
+      top: 0; left: 0;
+      width: calc(2/3 * 100%);
+      height: 100%;
+      transform-origin: left center;
+      transform-style: preserve-3d;
+      transition: transform 0.3s ease-in-out;
+      z-index: 2;
+      /* no background or border here any more */
+    }
+
+    /* each “frame” piece is one side of the door */
+    .frame {
+      position: absolute;
+      background: #e5e5e5;
+      border: 3px solid #333;
+      z-index: 3;
+    }
+
+    /* top bar */
+    .frame.top {
+      top: 0; left: 0;
+      width: 100%; height: 25%;
+      border-bottom: none;
+      border-radius: 6px 6px 0 0;
+    }
+
+    /* bottom bar */
+    .frame.bottom {
+      bottom: 0; left: 0;
+      width: 100%; height: 25%;
+      border-top: none;
+      border-radius: 0 0 6px 6px;
+    }
+
+    /* left bar */
+    .frame.left {
+      top: 25%; left: 0;
+      width: 20%; height: 50%;
+      border-right: none;
+    }
+
+    /* right bar */
+    .frame.right {
+      top: 25%; right: 0;
+      width: 20%; height: 50%;
+      border-left: none;
+    }
+
+    /* your tint-overlay, only for “heating” */
+    .door-window {
+      position: absolute;
+      left: 20%; top: 25%;
+      width: 60%; height: 50%;
+      background: transparent;
+      border: 2px solid #bbb;
+      border-radius: 8px;
+      box-shadow: inset 0 0 8px rgba(0,0,0,0.1);
+      z-index: 4;
+      pointer-events: none;
+      transition: background 0.3s, border-color 0.3s;
+    }
+    .door-window.heating {
+      background: rgba(255,0,0,0.18);
+      border-color: #e53e3e;
+    }
+
+    /* swing it open as before */
     .door.open {
       transform: rotateY(-90deg);
     }
+
 
     .door-handle {
       position: absolute;
@@ -63,7 +136,7 @@ export class MicrowaveGraphic extends LitElement {
       font-family: monospace;
       font-size: 18px;
       margin: 8px;
-      z-index: 2;
+      z-index: 3;
       min-width: 60px;
       text-align: center;
     }
@@ -125,6 +198,7 @@ export class MicrowaveGraphic extends LitElement {
       border-radius: 4px;
       margin: 8px;
       min-width: 120px;
+      z-index: 3;
     }
 
     .controls ::slotted(button) {
@@ -180,19 +254,25 @@ export class MicrowaveGraphic extends LitElement {
     }
 
     return html`
-      <div class="microwave-container">
-        <div class="door ${this.doorOpen ? 'open' : ''}">
-          <div class="door-handle"></div>
-          <div class="waves ${this.heating ? 'active' : ''}"></div>
-          <div class="beep ${this.beeping ? 'active' : ''}">BEEP!</div>
-        </div>
+    <div class="microwave-container">
+      <div class="food"></div>
+      <div class="door ${this.doorOpen ? 'open' : ''}">
+        <div class="frame top"></div>
+        <div class="frame left"></div>
+        <div class="frame right"></div>
+        <div class="frame bottom"></div>
 
-        <div class="display">${displayText}</div>
-
-        <div class="controls">
-          <slot name="buttons"></slot>
-        </div>
+        <!-- this only becomes the red tint on heating -->
+        <div class="door-window${this.heating ? ' heating' : ''}"></div>
+        
+        <div class="door-handle"></div>
+        <div class="waves ${this.heating ? 'active' : ''}"></div>
+        <div class="beep ${this.beeping ? 'active' : ''}">BEEP!</div>
       </div>
-    `;
+
+      <div class="display">${this.time > 0 ? this.formatCountdown(this.time) : this.formatClock()}</div>
+      <div class="controls"><slot name="buttons"></slot></div>
+    </div>
+  `;
   }
 }
