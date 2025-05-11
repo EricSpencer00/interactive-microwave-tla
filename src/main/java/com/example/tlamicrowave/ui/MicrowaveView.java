@@ -35,6 +35,8 @@ public class MicrowaveView extends VerticalLayout {
     private final List<String> allLogs = new ArrayList<>();
     private int currentLogIndex = 0;
     private static final int LOGS_PER_PAGE = 1;
+    private boolean showAllLogs = false;
+    private Button showAllButton;
 
     @Autowired
     public MicrowaveView(MicrowaveService service) {
@@ -89,7 +91,12 @@ public class MicrowaveView extends VerticalLayout {
                 updateLogDisplay();
             }
         });
-        logNavigation.add(prevButton, nextButton);
+        showAllButton = new Button("Show All", e -> {
+            showAllLogs = !showAllLogs;
+            showAllButton.setText(showAllLogs ? "Show One" : "Show All");
+            updateLogDisplay();
+        });
+        logNavigation.add(prevButton, nextButton, showAllButton);
         logNavigation.setSpacing(true);
 
         Stream.of(incrementButton, startButton, cancelButton, doorButton)
@@ -118,10 +125,22 @@ public class MicrowaveView extends VerticalLayout {
 
     private void updateLogDisplay() {
         verificationPanel.removeAll();
-        if (!allLogs.isEmpty() && currentLogIndex < allLogs.size()) {
-            Div entry = new Div(allLogs.get(currentLogIndex));
-            entry.getStyle().set("margin", "0.2em 0");
-            verificationPanel.add(entry);
+        if (!allLogs.isEmpty()) {
+            if (showAllLogs) {
+                // Show all logs
+                allLogs.forEach(log -> {
+                    Div entry = new Div(log);
+                    entry.getStyle().set("margin", "0.2em 0");
+                    verificationPanel.add(entry);
+                });
+            } else {
+                // Show single log
+                if (currentLogIndex < allLogs.size()) {
+                    Div entry = new Div(allLogs.get(currentLogIndex));
+                    entry.getStyle().set("margin", "0.2em 0");
+                    verificationPanel.add(entry);
+                }
+            }
         }
     }
 
@@ -149,7 +168,8 @@ public class MicrowaveView extends VerticalLayout {
             // Update verification log
             allLogs.clear();
             allLogs.addAll(service.getVerificationLog());
-            if (currentLogIndex >= allLogs.size()) {
+            // Always show the latest state when not in "Show All" mode
+            if (!showAllLogs) {
                 currentLogIndex = Math.max(0, allLogs.size() - 1);
             }
             updateLogDisplay();
