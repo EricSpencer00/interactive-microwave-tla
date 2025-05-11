@@ -1,6 +1,5 @@
-// // ./frontend/microwave-graphic.ts
-// import { html, css, LitElement } from 'lit';
-// import { customElement, property } from 'lit/decorators.js';
+import { LitElement, html, css } from 'lit';
+import { customElement, property } from 'lit/decorators.js';
 
 @customElement('microwave-graphic')
 export class MicrowaveGraphic extends LitElement {
