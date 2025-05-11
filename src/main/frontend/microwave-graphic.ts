@@ -90,22 +90,44 @@ export class MicrowaveGraphic extends LitElement {
     }
 
     /* your tint-overlay, only for “heating” */
+    /* actual glass pane */
     .door-window {
       position: absolute;
       left: 20%; top: 25%;
       width: 60%; height: 50%;
-      background: transparent;
-      border: 2px solid #bbb;
-      border-radius: 8px;
-      box-shadow: inset 0 0 8px rgba(0,0,0,0.1);
-      z-index: 4;
+      
+      /* light frosted glass */
+      background: rgba(255, 255, 255, 0.15);
+      backdrop-filter: blur(2px);
+      border: 1px solid rgba(255, 255, 255, 0.4);
+      box-shadow:
+        inset 0 0 8px rgba(0,0,0,0.1),    /* inner depth */
+        0 2px 4px rgba(0,0,0,0.1);         /* subtle outer shadow */
+
+      border-radius: 6px;
+      z-index: 3;
       pointer-events: none;
-      transition: background 0.3s, border-color 0.3s;
+      overflow: hidden;
     }
+
+    /* little glossy highlight stripe */
+    .door-window::before {
+      content: '';
+      position: absolute;
+      top: 8%; left: 10%;
+      width: 80%; height: 12%;
+      background: rgba(255,255,255,0.4);
+      transform: skewX(-20deg);
+      border-radius: 50%;
+      pointer-events: none;
+    }
+
+    /* red tint on heating */
     .door-window.heating {
-      background: rgba(255,0,0,0.18);
-      border-color: #e53e3e;
+      background: rgba(255, 0, 0, 0.18);
+      border-color: rgba(229, 62, 62, 0.6);
     }
+
 
     /* swing it open as before */
     .door.open {
