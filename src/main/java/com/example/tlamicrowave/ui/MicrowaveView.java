@@ -16,6 +16,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.util.stream.Stream;
+import java.util.HashSet;
+import java.util.Set;
 @Route("")
 @PermitAll
 @JsModule("./microwave-graphic.ts")
@@ -25,6 +27,7 @@ public class MicrowaveView extends VerticalLayout {
     private final Div verificationPanel;
     private final UI ui;
     private final MicrowaveGraphic graphic;
+    private final Set<String> shownViolations = new HashSet<>();
 
     @Autowired
     public MicrowaveView(MicrowaveService service) {
@@ -115,9 +118,10 @@ public class MicrowaveView extends VerticalLayout {
                 Div entry = new Div(log);
                 entry.getStyle().set("margin", "0.2em 0");
                 verificationPanel.add(entry);
-                // Show notification for violation attempts
-                if (log.contains("Violation Attempt")) {
+                // Show notification for violation attempts only once
+                if (log.contains("Violation Attempt") && !shownViolations.contains(log)) {
                     Notification.show(log, 3_000, Position.TOP_END);
+                    shownViolations.add(log);
                 }
             });
         });
