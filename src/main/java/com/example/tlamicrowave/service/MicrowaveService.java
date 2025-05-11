@@ -127,7 +127,6 @@ public class MicrowaveService {
 
     public void stopBeep() {
         state.stopBeep();
-        logState("StopBeep");
         pushUpdate();
     }
 } 
