@@ -88,7 +88,7 @@ public class MicrowaveService {
         log.append("/\\ door = ").append(state.getDoor()).append("\n");
         log.append("/\\ time = ").append(state.getTimeRemaining()).append("\n");
         log.append("/\\ radiation = ").append(state.getRadiation()).append("\n");
-        log.append("/\\ beep = ").append(state.getBeep()).append("\n");
+        // log.append("/\\ beep = ").append(state.getBeep()).append("\n");
         
         // Check safety properties
         if (state.isDoorSafetyViolated()) {
@@ -125,8 +125,8 @@ public class MicrowaveService {
         return state;
     }
 
-    public void stopBeep() {
-        state.stopBeep();
-        pushUpdate();
-    }
+    // public void stopBeep() {
+    //     state.stopBeep();
+    //     pushUpdate();
+    // }
 } 

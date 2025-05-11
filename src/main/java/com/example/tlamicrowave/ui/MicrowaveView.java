@@ -51,8 +51,8 @@ public class MicrowaveView extends VerticalLayout {
         // 3) Controls
         Button incrementButton = new Button("+3s", e -> { service.incrementTime(); updateUI(); });
         Button startButton     = new Button("Start", e -> { service.start();       updateUI(); });
-        Button cancelButton    = new Button("Cancel", e -> { service.cancel();     service.stopBeep(); updateUI(); });
-        Button doorButton      = new Button("Open/Close Door", e -> { service.toggleDoor(); service.stopBeep(); updateUI(); });
+        Button cancelButton    = new Button("Cancel", e -> { service.cancel();     /* service.stopBeep(); */ updateUI(); });
+        Button doorButton      = new Button("Open/Close Door", e -> { service.toggleDoor(); /* service.stopBeep(); */ updateUI(); });
         Button tickButton      = new Button("Tick", e -> { service.manualTick();  updateUI(); });
 
         // 4) Verification panel
@@ -98,16 +98,16 @@ public class MicrowaveView extends VerticalLayout {
             // Update microwave graphic
             graphic.getElement().setProperty("doorOpen", state.getDoor() == MicrowaveState.DoorState.OPEN);
             graphic.getElement().setProperty("heating", state.getRadiation() == MicrowaveState.RadiationState.ON);
-            graphic.getElement().setProperty("beeping", state.getBeep() == MicrowaveState.BeepState.ON);
+            // graphic.getElement().setProperty("beeping", state.getBeep() == MicrowaveState.BeepState.ON);
             graphic.getElement().setProperty("time", state.getTimeRemaining());
 
             // Check safety violations
             if (state.isDoorSafetyViolated()) {
                 Notification.show("⚠️ Door Safety Violated!", 3_000, Position.TOP_END);
             }
-            if (state.isBeepSafetyViolated()) {
-                Notification.show("⚠️ Beep Safety Violated!", 3_000, Position.TOP_END);
-            }
+            // if (state.isBeepSafetyViolated()) {
+            //     Notification.show("⚠️ Beep Safety Violated!", 3_000, Position.TOP_END);
+            // }
             if (state.isRadiationSafetyViolated()) {
                 Notification.show("⚠️ Radiation Safety Violated!", 3_000, Position.TOP_END);
             }
