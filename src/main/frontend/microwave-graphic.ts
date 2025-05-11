@@ -5,13 +5,24 @@ import { customElement, property } from 'lit/decorators.js';
 export class MicrowaveGraphic extends LitElement {
   static styles = css`
     :host {
-      display: grid;
-      width: var(--mw-width, 600px);
-      height: var(--mw-height, 370px);
+      display: block;
+      width: 700px;
+      height: 500px;
       background: #f0f0f0;
       border: 2px solid #333;
       border-radius: 10px;
+      position: relative;
       overflow: hidden;
+    }
+
+    .microwave-container {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 600px;
+      height: 370px;
+      display: grid;
       grid-template-columns: 2fr 1fr;
       grid-template-rows: auto 1fr;
     }
@@ -20,15 +31,26 @@ export class MicrowaveGraphic extends LitElement {
       grid-column: 1;
       grid-row: 1 / span 2;
       background: #ddd;
+      position: relative;
       transform-origin: left;
       transition: transform 0.3s ease-in-out;
-      position: relative;
     }
+
     .door.open {
       transform: rotateY(-90deg);
     }
 
-    /* digit box */
+    .door-handle {
+      position: absolute;
+      right: 20px;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 30px;
+      height: 60px;
+      background: #666;
+      border-radius: 15px;
+    }
+
     .display {
       grid-column: 2;
       grid-row: 1;
@@ -42,7 +64,6 @@ export class MicrowaveGraphic extends LitElement {
       font-size: 18px;
       margin: 8px;
       z-index: 2;
-      /* ensure fixed size so digits never push layout */
       min-width: 60px;
       text-align: center;
     }
@@ -65,6 +86,7 @@ export class MicrowaveGraphic extends LitElement {
       transition: opacity 0.3s ease-in-out;
       z-index: 1;
     }
+
     .waves.active {
       opacity: 1;
     }
@@ -80,14 +102,17 @@ export class MicrowaveGraphic extends LitElement {
       transition: opacity 0.5s ease-in-out;
       z-index: 2;
     }
+
     .beep.active {
       opacity: 1;
       animation: blink 1s infinite;
     }
+
     @keyframes blink {
       0%,100% { opacity: 1; }
       50% { opacity: 0; }
     }
+
     .controls {
       grid-column: 2;
       grid-row: 2;
@@ -102,40 +127,19 @@ export class MicrowaveGraphic extends LitElement {
       min-width: 120px;
     }
 
-    /* Style for all buttons */
     .controls ::slotted(button) {
       width: 100%;
       height: 100%;
-      padding: 8px;
-      border: 2px solid #333;
+      padding: 0;
+      border: none;
       border-radius: 4px;
-      font-weight: bold;
       cursor: pointer;
       transition: all 0.2s ease;
+      background-size: cover;
+      background-position: center;
+      background-repeat: no-repeat;
     }
 
-    /* Style for +3s and door buttons */
-    .controls ::slotted(button:nth-child(1)),
-    .controls ::slotted(button:nth-child(4)) {
-      background-color: white;
-      color: #333;
-    }
-
-    /* Style for start button */
-    .controls ::slotted(button:nth-child(2)) {
-      background-color: #38a169;
-      color: white;
-      border-color: #2f855a;
-    }
-
-    /* Style for cancel button */
-    .controls ::slotted(button:nth-child(3)) {
-      background-color: #e53e3e;
-      color: white;
-      border-color: #c53030;
-    }
-
-    /* Hover effects */
     .controls ::slotted(button:hover) {
       transform: translateY(-2px);
       box-shadow: 0 2px 4px rgba(0,0,0,0.2);
@@ -150,7 +154,7 @@ export class MicrowaveGraphic extends LitElement {
   @property({ type: Boolean }) doorOpen = false;
   @property({ type: Boolean }) heating = false;
   @property({ type: Boolean }) beeping = false;
-  @property({ type: Number }) time = 0;  // seconds remaining
+  @property({ type: Number }) time = 0;
 
   private formatClock(): string {
     const now = new Date();
@@ -168,26 +172,26 @@ export class MicrowaveGraphic extends LitElement {
   render() {
     let displayText: string;
     if (this.beeping) {
-      // during beeps, always show 00:00
       displayText = '00:00';
     } else if (this.time > 0) {
-      // countdown mode
       displayText = this.formatCountdown(this.time);
     } else {
-      // idle: real clock
       displayText = this.formatClock();
     }
 
     return html`
-      <div class="door ${this.doorOpen ? 'open' : ''}">
-        <div class="waves ${this.heating ? 'active' : ''}"></div>
-        <div class="beep ${this.beeping ? 'active' : ''}">BEEP!</div>
-      </div>
+      <div class="microwave-container">
+        <div class="door ${this.doorOpen ? 'open' : ''}">
+          <div class="door-handle"></div>
+          <div class="waves ${this.heating ? 'active' : ''}"></div>
+          <div class="beep ${this.beeping ? 'active' : ''}">BEEP!</div>
+        </div>
 
-      <div class="display">${displayText}</div>
+        <div class="display">${displayText}</div>
 
-      <div class="controls">
-        <slot name="buttons"></slot>
+        <div class="controls">
+          <slot name="buttons"></slot>
+        </div>
       </div>
     `;
   }

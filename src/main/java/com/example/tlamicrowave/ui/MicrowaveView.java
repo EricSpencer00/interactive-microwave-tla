@@ -58,11 +58,31 @@ public class MicrowaveView extends VerticalLayout {
         graphic = new MicrowaveGraphic();
 
         // 3) Controls
-        Button incrementButton = new Button("+3s", e -> { service.incrementTime(); updateUI(); });
-        Button startButton     = new Button("Start", e -> { service.start();       updateUI(); });
-        Button cancelButton    = new Button("Cancel", e -> { service.cancel();     /* service.stopBeep(); */ updateUI(); });
-        Button doorButton      = new Button("Open/Close Door", e -> { service.toggleDoor(); /* service.stopBeep(); */ updateUI(); });
+        Button incrementButton = new Button("", e -> { service.incrementTime(); updateUI(); });
+        Button startButton     = new Button("", e -> { service.start();       updateUI(); });
+        Button cancelButton    = new Button("", e -> { service.cancel();     /* service.stopBeep(); */ updateUI(); });
+        Button doorButton      = new Button("", e -> { service.toggleDoor(); /* service.stopBeep(); */ updateUI(); });
         Button tickButton      = new Button("Tick", e -> { service.manualTick();  updateUI(); });
+
+        // Style buttons with background images
+        incrementButton.getStyle().set("background-image", "url('/images/plus3s.png')");
+        startButton.getStyle().set("background-image", "url('/images/start.png')");
+        cancelButton.getStyle().set("background-image", "url('/images/cancel.png')");
+        doorButton.getStyle().set("background-image", "url('/images/door.png')");
+
+        // Set button sizes
+        Stream.of(incrementButton, startButton, cancelButton, doorButton)
+            .forEach(btn -> {
+                btn.getStyle().set("width", "100%");
+                btn.getStyle().set("height", "100%");
+                btn.getStyle().set("background-size", "contain");
+                btn.getStyle().set("background-repeat", "no-repeat");
+                btn.getStyle().set("background-position", "center");
+                btn.getStyle().set("border", "none");
+                btn.getStyle().set("padding", "0");
+                btn.getElement().setAttribute("slot", "buttons");
+                graphic.getElement().appendChild(btn.getElement());
+            });
 
         // 4) Verification panel
         verificationPanel = new Div();
@@ -98,12 +118,6 @@ public class MicrowaveView extends VerticalLayout {
         });
         logNavigation.add(prevButton, nextButton, showAllButton);
         logNavigation.setSpacing(true);
-
-        Stream.of(incrementButton, startButton, cancelButton, doorButton)
-            .forEach(btn -> {
-                btn.getElement().setAttribute("slot", "buttons");
-                graphic.getElement().appendChild(btn.getElement());
-            });
 
         // assemble
         add(timerDisplay);

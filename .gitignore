@@ -56,3 +56,4 @@ spring-boot-devtools.restart.trigger
 
 flattened/
 frontend/
+/flattened
