@@ -43,16 +43,20 @@ public class MicrowaveService {
         if (state.canIncrementTime()) {
             state.incrementTime();
             logState("IncrementTime");
-            pushUpdate();
+        } else {
+            logState("IncrementTime Violation Attempt");
         }
+        pushUpdate();
     }
 
     public void start() {
         if (state.canStart()) {
             state.start();
             logState("Start");
-            pushUpdate();
+        } else {
+            logState("Start Violation Attempt");
         }
+        pushUpdate();
     }
 
     public void cancel() {

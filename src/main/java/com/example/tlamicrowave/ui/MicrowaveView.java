@@ -115,6 +115,10 @@ public class MicrowaveView extends VerticalLayout {
                 Div entry = new Div(log);
                 entry.getStyle().set("margin", "0.2em 0");
                 verificationPanel.add(entry);
+                // Show notification for violation attempts
+                if (log.contains("Violation Attempt")) {
+                    Notification.show(log, 3_000, Position.TOP_END);
+                }
             });
         });
     }
