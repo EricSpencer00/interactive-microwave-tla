@@ -10,6 +10,7 @@ import com.vaadin.flow.component.html.H2;
 import com.vaadin.flow.component.notification.Notification;
 import com.vaadin.flow.component.notification.Notification.Position;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
+import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.router.Route;
 import jakarta.annotation.security.PermitAll;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -18,6 +19,9 @@ import java.time.format.DateTimeFormatter;
 import java.util.stream.Stream;
 import java.util.HashSet;
 import java.util.Set;
+import java.util.List;
+import java.util.ArrayList;
+
 @Route("")
 @PermitAll
 @JsModule("./microwave-graphic.ts")
@@ -28,6 +32,9 @@ public class MicrowaveView extends VerticalLayout {
     private final UI ui;
     private final MicrowaveGraphic graphic;
     private final Set<String> shownViolations = new HashSet<>();
+    private final List<String> allLogs = new ArrayList<>();
+    private int currentLogIndex = 0;
+    private static final int LOGS_PER_PAGE = 1;
 
     @Autowired
     public MicrowaveView(MicrowaveService service) {
@@ -64,21 +71,39 @@ public class MicrowaveView extends VerticalLayout {
         verificationPanel.getStyle().set("border-radius", "5px");
         verificationPanel.getStyle().set("font-family", "monospace");
         verificationPanel.getStyle().set("white-space", "pre");
-        verificationPanel.setHeight("300px");
-        verificationPanel.getStyle().set("overflow-y", "auto");
-        verificationPanel.getStyle().set("min-height", "300px");
+        verificationPanel.setWidth("800px");
+        verificationPanel.getStyle().set("min-height", "100px");
         verificationPanel.getStyle().set("background-color", "#f8f9fa");
+
+        // Navigation buttons for logs
+        HorizontalLayout logNavigation = new HorizontalLayout();
+        Button prevButton = new Button("Previous", e -> {
+            if (currentLogIndex > 0) {
+                currentLogIndex--;
+                updateLogDisplay();
+            }
+        });
+        Button nextButton = new Button("Next", e -> {
+            if (currentLogIndex < allLogs.size() - 1) {
+                currentLogIndex++;
+                updateLogDisplay();
+            }
+        });
+        logNavigation.add(prevButton, nextButton);
+        logNavigation.setSpacing(true);
 
         Stream.of(incrementButton, startButton, cancelButton, doorButton)
             .forEach(btn -> {
                 btn.getElement().setAttribute("slot", "buttons");
                 graphic.getElement().appendChild(btn.getElement());
             });
+
         // assemble
         add(timerDisplay);
         add(graphic);
         add(new H2("TLA+ State Trace"));
         add(verificationPanel);
+        add(logNavigation);
 
         // Enable server-side polling
         ui.setPollInterval(1_000);
@@ -89,6 +114,15 @@ public class MicrowaveView extends VerticalLayout {
 
         // initial render
         updateUI();
+    }
+
+    private void updateLogDisplay() {
+        verificationPanel.removeAll();
+        if (!allLogs.isEmpty() && currentLogIndex < allLogs.size()) {
+            Div entry = new Div(allLogs.get(currentLogIndex));
+            entry.getStyle().set("margin", "0.2em 0");
+            verificationPanel.add(entry);
+        }
     }
 
     private void updateUI() {
@@ -113,12 +147,15 @@ public class MicrowaveView extends VerticalLayout {
             }
 
             // Update verification log
-            verificationPanel.removeAll();
+            allLogs.clear();
+            allLogs.addAll(service.getVerificationLog());
+            if (currentLogIndex >= allLogs.size()) {
+                currentLogIndex = Math.max(0, allLogs.size() - 1);
+            }
+            updateLogDisplay();
+
+            // Show notification for violation attempts only once
             service.getVerificationLog().forEach(log -> {
-                Div entry = new Div(log);
-                entry.getStyle().set("margin", "0.2em 0");
-                verificationPanel.add(entry);
-                // Show notification for violation attempts only once
                 if (log.contains("Violation Attempt") && !shownViolations.contains(log)) {
                     Notification.show(log, 3_000, Position.TOP_END);
                     shownViolations.add(log);
