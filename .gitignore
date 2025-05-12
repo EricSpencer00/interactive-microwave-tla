@@ -4,12 +4,15 @@ target/
 !**/src/main/**/target/
 !**/src/test/**/target/
 
-# Node.js
+# Node.js and npm
 node/
 node_modules/
-npm-debug.log
-yarn-debug.log
-yarn-error.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+.npm
+.yarn-integrity
 
 # IDE files
 .idea/
@@ -20,6 +23,8 @@ yarn-error.log
 .project
 .classpath
 .settings/
+.factorypath
+.sts4-cache/
 
 # Compiled files
 *.class
@@ -29,14 +34,20 @@ yarn-error.log
 *.zip
 *.tar.gz
 *.rar
+*.nar
 
 # Logs
 logs/
 *.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
 
 # OS specific files
 .DS_Store
 Thumbs.db
+desktop.ini
+$RECYCLE.BIN/
 
 # Vaadin specific
 frontend/generated/
@@ -50,11 +61,35 @@ webpack.config.js
 tsconfig.json
 types.d.ts
 vite.generated.ts
+vaadin-dev-server-settings.json
+vaadin-dev-server.log
+vaadin-dev-server.pid
+vaadin-dev-server.pid.lock
 
 # Spring Boot specific
 spring-boot-devtools.restart.trigger
+.spring-boot-devtools.restart.trigger
+.springBeans
+.spring-boot-devtools.restart.trigger
 
+# Build and deployment
 flattened/
 frontend/generated
 /flattened
+dist/
+build/
+out/
 src/main/frontend
+
+# Environment files
+.env
+.env.local
+.env.*.local
+.env.development
+.env.test
+.env.production
+
+# Coverage and test reports
+coverage/
+.nyc_output/
+test-results/
