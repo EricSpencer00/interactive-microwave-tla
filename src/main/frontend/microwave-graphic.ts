@@ -51,7 +51,11 @@ export class MicrowaveGraphic extends LitElement {
       transform-style: preserve-3d;
       transition: transform 0.3s ease-in-out;
       z-index: 2;
-      /* no background or border here any more */
+      
+      background: #e5e5e5;
+      border: 4px solid #333;
+      border-radius: 8px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.2);
     }
 
     /* each "frame" piece is one side of the door */
@@ -292,10 +296,6 @@ export class MicrowaveGraphic extends LitElement {
     <div class="microwave-container">
       <div class="food"></div>
       <div class="door ${this.doorOpen ? 'open' : ''}">
-        <div class="frame top"></div>
-        <div class="frame left"></div>
-        <div class="frame right"></div>
-        <div class="frame bottom"></div>
 
         <!-- this only becomes the red tint on heating -->
         <div class="door-window${this.heating ? ' heating' : ''}"></div>

@@ -88,8 +88,19 @@ public class MicrowaveService {
         pushUpdate();
     }
 
-    private void logState(String action) {
+    public void logState(String action) {
         StringBuilder log = new StringBuilder();
+
+        // Show initial state in TLA+ format if this is the initial state
+        if (action.equals("Initial")) {
+            log.append("Init ==\n");
+            log.append("/\\ door = CLOSED\n"); 
+            log.append("/\\ time = 0\n");
+            log.append("/\\ radiation = OFF\n");
+            log.append("/\\ power = OFF\n");
+            log.append("\n");
+        }
+
         log.append("State: ").append(action).append("\n");
         log.append("/\\ door = ").append(state.getDoor()).append("\n");
         log.append("/\\ time = ").append(state.getTimeRemaining()).append("\n");

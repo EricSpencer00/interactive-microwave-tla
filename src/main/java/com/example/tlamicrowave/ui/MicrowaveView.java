@@ -137,6 +137,10 @@ public class MicrowaveView extends VerticalLayout {
         add(verificationPanel);
         add(logNavigation);
 
+        service.logState("Initial");
+        allLogs.addAll(service.getVerificationLog());
+        updateLogDisplay();
+
         // Internal clock that updates frontend every second
         ui.setPollInterval(1_000);
         ui.addPollListener(event -> {
