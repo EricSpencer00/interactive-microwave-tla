@@ -1,159 +1,97 @@
+// MicrowaveService.java
 package com.example.tlamicrowave.service;
 
 import com.example.tlamicrowave.model.MicrowaveState;
 import com.vaadin.flow.component.UI;
-import lombok.RequiredArgsConstructor;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
 import java.util.ArrayList;
 import java.util.List;
 
 @Service
-@RequiredArgsConstructor
 public class MicrowaveService {
-    private static final Logger logger = LoggerFactory.getLogger(MicrowaveService.class);
+    private static final Logger log = LoggerFactory.getLogger(MicrowaveService.class);
     private final MicrowaveState state = new MicrowaveState();
     private final List<String> verificationLog = new ArrayList<>();
     private UI ui;
 
-    public void setUI(UI ui) {
-        this.ui = ui;
-    }
+    public void setUI(UI ui) { this.ui = ui; }
 
-    @Scheduled(fixedRate = 1000)
+    @Scheduled(fixedRate=1000)
     public void tick() {
-        logger.debug("Scheduled tick running, radiation state: {}", state.getRadiation());
-        if (state.getPower() == MicrowaveState.PowerState.ON && state.getRadiation() == MicrowaveState.RadiationState.ON) {
-            logger.debug("Executing tick, current time: {}", state.getTimeRemaining());
+        if (state.getPower()==MicrowaveState.PowerState.ON && state.getRadiation()==MicrowaveState.RadiationState.ON) {
             state.tick();
             logState("Tick");
-            if (ui != null) {
-                ui.access(() -> {
-                    logger.debug("Pushing UI update after tick");
-                    ui.push();
-                });
-            }
+            pushUpdate();
         }
     }
 
-    public void incrementTime() {
-        if (state.canIncrementTime()) {
-            state.incrementTime();
-            logState("IncrementTime");
-        } else {
-            logState("IncrementTime Violation Attempt");
-        }
+    public void incrementTime() { applyAction("IncrementTime", state::incrementTime, state::canIncrementTime, "time + 3"); }
+    public void start()         { applyAction("Start",        state::start,         state::canStart,        "radiation = ON"); }
+    public void cancel()        { applyAction("Cancel",       state::cancel,        ()->true,               "time = 0"); }
+    public void toggleDoor()    { applyAction(state.getDoor()==MicrowaveState.DoorState.OPEN?"CloseDoor":"OpenDoor",
+                                                        ()->{ if(state.getDoor()==MicrowaveState.DoorState.OPEN) state.closeDoor(); else state.openDoor(); },
+                                                        ()->true, "door toggled"); }
+    public void togglePower()   { applyAction("TogglePower",  state::togglePower,   ()->true,               "power toggled"); }
+
+    private void applyAction(String name, Runnable action, java.util.function.BooleanSupplier guard, String detail) {
+        if (guard.getAsBoolean()) { action.run(); logState(name); }
+        else                    { verificationLog.add(name+" Violation Attempt"); }
         pushUpdate();
     }
 
-    public void start() {
-        if (state.canStart()) {
-            state.start();
-            logState("Start");
-        } else {
-            logState("Start Violation Attempt");
+    public synchronized void logState(String action) {
+        StringBuilder b = new StringBuilder();
+        if (verificationLog.isEmpty()) {
+            b.append("---- MODULE Microwave ----\n")
+             .append("EXTENDS Integers, TLC\n\n")
+             .append("VARIABLES door, time, radiation, power\n\n")
+             .append("Init ==\n")
+             .append("/\\ door = CLOSED\n")
+             .append("/\\ time = 0\n")
+             .append("/\\ radiation = OFF\n")
+             .append("/\\ power = OFF\n\n")
+             .append("TogglePower ==\n")
+             .append("/\\ UNCHANGED <<door, time, radiation>>\n")
+             .append("/\\ power' = IF power = ON THEN OFF ELSE ON\n\n")
+             .append("IncrementTime ==\n")
+             .append("/\\ UNCHANGED <<door, radiation, power>>\n")
+             .append("/\\ time' = time + 3\n\n")
+             .append("Start ==\n")
+             .append("/\\ time > 0\n")
+             .append("/\\ radiation' = ON\n")
+             .append("/\\ UNCHANGED <<door, time, power>>\n\n")
+             .append("Tick ==\n")
+             .append("/\\ time > 0\n")
+             .append("/\\ time' = time - 1\n")
+             .append("/\\ UNCHANGED <<door, power>>\n")
+             .append("/\\ radiation' = IF time' = 0 THEN OFF ELSE radiation\n\n")
+             .append("Cancel ==\n")
+             .append("/\\ time' = 0\n")
+             .append("/\\ radiation' = OFF\n")
+             .append("/\\ UNCHANGED <<door, power>>\n\n")
+             .append("Next == Init \\/ TogglePower \\/ IncrementTime \\/ Start \\/ Tick \\/ Cancel\n\n")
+             .append("Spec == Init /\\ [][Next]_<<door,time,radiation,power>>\n\n")
+             .append("====\n");
         }
-        pushUpdate();
-    }
-
-    public void cancel() {
-        state.cancel();
-        logState("Cancel");
-        pushUpdate();
-    }
-
-    public void toggleDoor() {
-        if (state.getDoor() == MicrowaveState.DoorState.OPEN) {
-            state.closeDoor();
-            logState("CloseDoor");
-        } else {
-            state.openDoor();
-            logState("OpenDoor");
-        }
-        pushUpdate();
-    }
-
-    public void manualTick() {
-        state.manualTick();
-        logState("ManualTick");
-        pushUpdate();
-    }
-
-    public void togglePower() {
-        state.togglePower();
-        logState("TogglePower");
-        pushUpdate();
-    }
-
-    public void logState(String action) {
-        StringBuilder log = new StringBuilder();
-
-        // Show initial state in TLA+ format if this is the initial state
-        if (action.equals("Initial")) {
-            log.append("Init ==\n");
-            log.append("/\\ door = CLOSED\n"); 
-            log.append("/\\ time = 0\n");
-            log.append("/\\ radiation = OFF\n");
-            log.append("/\\ power = OFF\n");
-            log.append("\n");
-        }
-
-        log.append("State: ").append(action).append("\n");
-        log.append("/\\ door = ").append(state.getDoor()).append("\n");
-        log.append("/\\ time = ").append(state.getTimeRemaining()).append("\n");
-        log.append("/\\ radiation = ").append(state.getRadiation()).append("\n");
-        log.append("/\\ power = ").append(state.getPower()).append("\n");
-        // log.append("/\\ beep = ").append(state.getBeep()).append("\n");
-        
-        // Check safety properties
-        if (state.isDoorSafetyViolated()) {
-            log.append("/\\ [VIOLATION] ~(door = CLOSED => radiation = OFF)\n");
-        }
-        if (state.isBeepSafetyViolated()) {
-            log.append("/\\ [VIOLATION] ~(beep = ON => time = 0)\n");
-        }
-        if (state.isRadiationSafetyViolated()) {
-            log.append("/\\ [VIOLATION] ~(radiation = ON => door = CLOSED)\n");
-        }
-        if (state.isDoorStateSafetyViolated()) {
-            log.append("/\\ [VIOLATION] ~(door = OPEN => radiation = OFF)\n");
-        }
-        // Power safety: nothing should be on if power is OFF
-        if (state.getPower() == MicrowaveState.PowerState.OFF && (state.getRadiation() == MicrowaveState.RadiationState.ON || state.getTimeRemaining() > 0)) {
-            log.append("/\\ [VIOLATION] ~(power = OFF => radiation = OFF ∧ time = 0)\n");
-        }
-  
-        
-        logger.debug("State change: {}", log);
-        verificationLog.add(log.toString());
+        b.append("(* State: ").append(action).append(" *)\n");
+        b.append("/\\ door = ").append(state.getDoor()).append("\n");
+        b.append("/\\ time = ").append(state.getTimeRemaining()).append("\n");
+        b.append("/\\ radiation = ").append(state.getRadiation()).append("\n");
+        b.append("/\\ power = ").append(state.getPower()).append("\n\n");
+        verificationLog.add(b.toString());
+        log.debug(b.toString());
     }
 
     private void pushUpdate() {
-        if (ui != null) {
-            ui.access(() -> {
-                logger.debug("Pushing UI update");
-                ui.push();
-            });
-        }
+        if (ui!=null) ui.access(() -> ui.push());
     }
 
     public List<String> getVerificationLog() {
         return new ArrayList<>(verificationLog);
     }
 
-    public MicrowaveState getState() {
-        return state;
-    }
-
-    public MicrowaveState.PowerState getPower() { 
-        return state.getPower(); 
-    }
-
-    // public void stopBeep() {
-    //     state.stopBeep();
-    //     pushUpdate();
-    // }
-} 
+    public MicrowaveState getState() { return state; }
+}
