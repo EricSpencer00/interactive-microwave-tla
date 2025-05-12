@@ -117,3 +117,4 @@ src/main/frontend
 coverage/
 .nyc_output/
 test-results/
+src/main/bundles/dev.bundle

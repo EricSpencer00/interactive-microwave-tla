@@ -56,6 +56,9 @@ public class MicrowaveView extends VerticalLayout {
 
         // 2) Microwave graphic
         graphic = new MicrowaveGraphic();
+        graphic.getElement().setProperty("width", "700px");
+        graphic.getElement().setProperty("height", "500px");
+        graphic.getStyle().set("margin-bottom", "1em");
 
         // 3) Controls
         Button incrementButton = new Button("", e -> { service.incrementTime(); updateUI(); });
