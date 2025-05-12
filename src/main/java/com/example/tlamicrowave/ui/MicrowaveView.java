@@ -62,7 +62,7 @@ public class MicrowaveView extends VerticalLayout {
         Button startButton     = new Button("", e -> { service.start();       updateUI(); });
         Button cancelButton    = new Button("", e -> { service.cancel();     /* service.stopBeep(); */ updateUI(); });
         Button doorButton      = new Button("", e -> { service.toggleDoor(); /* service.stopBeep(); */ updateUI(); });
-        Button tickButton      = new Button("Tick", e -> { service.manualTick();  updateUI(); });
+        // Button tickButton      = new Button("Tick", e -> { service.manualTick();  updateUI(); });
         Button powerButton     = new Button("", e -> { service.togglePower(); updateUI(); });
 
         // Style buttons with background images
@@ -97,6 +97,7 @@ public class MicrowaveView extends VerticalLayout {
                                     .set("white-space", "pre")
                                     .set("background-color", "#f8f9fa")
                                     .set("width", "800px")
+                                    .set("height", "400px")
                                     .set("max-height", "400px")
                                     .set("overflow-y", "auto")
                                     .set("overflow-x", "hidden");
@@ -135,13 +136,6 @@ public class MicrowaveView extends VerticalLayout {
         add(new H2("TLA+ State Trace"));
         add(verificationPanel);
         add(logNavigation);
-
-        // Enable server-side polling
-        ui.setPollInterval(1_000);
-        ui.addPollListener(event -> {
-            timerDisplay.setText(LocalTime.now().format(DateTimeFormatter.ofPattern("HH:mm:ss")));
-            updateUI();
-        });
 
         // initial render
         updateUI();
