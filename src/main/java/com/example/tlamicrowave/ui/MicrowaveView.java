@@ -21,7 +21,6 @@ import java.util.HashSet;
 import java.util.Set;
 import java.util.List;
 import java.util.ArrayList;
-import java.util.Arrays;
 
 @Route("")
 @PermitAll
@@ -38,12 +37,6 @@ public class MicrowaveView extends VerticalLayout {
     private static final int LOGS_PER_PAGE = 1;
     private boolean showAllLogs = false;
     private Button showAllButton;
-
-    // State tracking for polling
-    private int lastTime = -1;
-    private MicrowaveState.DoorState lastDoor = null;
-    private MicrowaveState.RadiationState lastRad = null;
-    private int lastLogSize = -1;
 
     @Autowired
     public MicrowaveView(MicrowaveService service) {
@@ -63,15 +56,6 @@ public class MicrowaveView extends VerticalLayout {
 
         // 2) Microwave graphic
         graphic = new MicrowaveGraphic();
-        graphic.getStyle()
-               .set("width", "700px")
-               .set("height", "500px")
-               .set("flex", "none")
-               .set("min-width", "700px")
-               .set("max-width", "700px")
-               .set("min-height", "500px")
-               .set("max-height", "500px")
-               .set("margin-bottom", "1em");
 
         // 3) Controls
         Button incrementButton = new Button("", e -> { service.incrementTime(); updateUI(); });
@@ -80,12 +64,14 @@ public class MicrowaveView extends VerticalLayout {
         Button doorButton      = new Button("", e -> { service.toggleDoor(); /* service.stopBeep(); */ updateUI(); });
         Button tickButton      = new Button("Tick", e -> { service.manualTick();  updateUI(); });
         Button powerButton     = new Button("", e -> { service.togglePower(); updateUI(); });
+
         // Style buttons with background images
         incrementButton.getStyle().set("background-image", "url('/images/plus3s.png')");
         startButton.getStyle().set("background-image", "url('/images/start.png')");
         cancelButton.getStyle().set("background-image", "url('/images/cancel.png')");
         doorButton.getStyle().set("background-image", "url('/images/door.png')");
         powerButton.getStyle().set("background-image", "url('/images/power.png')");
+
         // Set button sizes
         Stream.of(incrementButton, startButton, cancelButton, doorButton, powerButton)
             .forEach(btn -> {
@@ -100,31 +86,21 @@ public class MicrowaveView extends VerticalLayout {
                 graphic.getElement().appendChild(btn.getElement());
             });
 
-        timerDisplay.addClassName("timer-display");
-        // powerButton.addClassName("power-toggle-button");
-
-        // // build header
-        // HorizontalLayout header = new HorizontalLayout(timerDisplay, powerButton);
-        // header.setAlignItems(Alignment.CENTER);
-        // header.setSpacing(true);
-
-        // // now add the header before the graphic
-        // add(header);
-        // add(graphic);
-
-
+        // 4) Verification panel
         // 4) Verification panel
         verificationPanel = new Div();
         verificationPanel.addClassName("verification-panel");
-        verificationPanel.getStyle().set("margin-top", "2em");
-        verificationPanel.getStyle().set("padding", "1em");
-        verificationPanel.getStyle().set("border", "1px solid #ddd");
-        verificationPanel.getStyle().set("border-radius", "5px");
-        verificationPanel.getStyle().set("font-family", "monospace");
-        verificationPanel.getStyle().set("white-space", "pre");
-        verificationPanel.setWidth("800px");
-        verificationPanel.getStyle().set("min-height", "100px");
-        verificationPanel.getStyle().set("background-color", "#f8f9fa");
+        verificationPanel.getStyle().set("padding", "1em")
+                                    .set("border", "1px solid #ddd")
+                                    .set("border-radius", "5px")
+                                    .set("font-family", "monospace")
+                                    .set("white-space", "pre")
+                                    .set("background-color", "#f8f9fa")
+                                    .set("width", "800px")
+                                    .set("max-height", "400px")
+                                    .set("overflow-y", "auto")
+                                    .set("overflow-x", "hidden");
+
 
         // Navigation buttons for logs
         HorizontalLayout logNavigation = new HorizontalLayout();
@@ -148,6 +124,11 @@ public class MicrowaveView extends VerticalLayout {
         logNavigation.add(prevButton, nextButton, showAllButton);
         logNavigation.setSpacing(true);
 
+        // Update bounding box when show all button is clicked
+        showAllButton.addClickListener(e -> {
+            verificationPanel.getStyle().set("min-height", showAllLogs ? "400px" : "100px");
+        });
+
         // assemble
         add(timerDisplay);
         add(graphic);
@@ -158,28 +139,8 @@ public class MicrowaveView extends VerticalLayout {
         // Enable server-side polling
         ui.setPollInterval(1_000);
         ui.addPollListener(event -> {
-            // 1) keep the clock ticking
             timerDisplay.setText(LocalTime.now().format(DateTimeFormatter.ofPattern("HH:mm:ss")));
-
-            // 2) grab the current state
-            MicrowaveState st = service.getState();
-            List<String> logs = service.getVerificationLog();
-
-            // 3) detect any change
-            boolean changed =
-                st.getTimeRemaining() != lastTime ||
-                st.getDoor() != lastDoor ||
-                st.getRadiation() != lastRad ||
-                logs.size() != lastLogSize;
-
-            if (changed) {
-                updateUI();
-                // remember for next time
-                lastTime = st.getTimeRemaining();
-                lastDoor = st.getDoor();
-                lastRad = st.getRadiation();
-                lastLogSize = logs.size();
-            }
+            updateUI();
         });
 
         // initial render
@@ -216,7 +177,6 @@ public class MicrowaveView extends VerticalLayout {
             graphic.getElement().setProperty("heating", state.getRadiation() == MicrowaveState.RadiationState.ON);
             // graphic.getElement().setProperty("beeping", state.getBeep() == MicrowaveState.BeepState.ON);
             graphic.getElement().setProperty("time", state.getTimeRemaining());
-            graphic.getElement().setProperty("powerOn", state.getPower() == MicrowaveState.PowerState.ON);
 
             // Check safety violations
             if (state.isDoorSafetyViolated()) {
