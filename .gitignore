@@ -118,3 +118,4 @@ coverage/
 .nyc_output/
 test-results/
 src/main/bundles/dev.bundle
+src/main/bundles/prod.bundle

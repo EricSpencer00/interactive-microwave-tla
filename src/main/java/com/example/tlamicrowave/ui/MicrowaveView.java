@@ -38,6 +38,12 @@ public class MicrowaveView extends VerticalLayout {
     private boolean showAllLogs = false;
     private Button showAllButton;
 
+    // State tracking for polling
+    private int lastTime = -1;
+    private MicrowaveState.DoorState lastDoor = null;
+    private MicrowaveState.RadiationState lastRad = null;
+    private int lastLogSize = -1;
+
     @Autowired
     public MicrowaveView(MicrowaveService service) {
         this.service = service;
@@ -56,9 +62,15 @@ public class MicrowaveView extends VerticalLayout {
 
         // 2) Microwave graphic
         graphic = new MicrowaveGraphic();
-        graphic.getElement().setProperty("width", "700px");
-        graphic.getElement().setProperty("height", "500px");
-        graphic.getStyle().set("margin-bottom", "1em");
+        graphic.getStyle()
+               .set("width", "700px")
+               .set("height", "500px")
+               .set("flex", "none")
+               .set("min-width", "700px")
+               .set("max-width", "700px")
+               .set("min-height", "500px")
+               .set("max-height", "500px")
+               .set("margin-bottom", "1em");
 
         // 3) Controls
         Button incrementButton = new Button("", e -> { service.incrementTime(); updateUI(); });
@@ -132,8 +144,28 @@ public class MicrowaveView extends VerticalLayout {
         // Enable server-side polling
         ui.setPollInterval(1_000);
         ui.addPollListener(event -> {
+            // 1) keep the clock ticking
             timerDisplay.setText(LocalTime.now().format(DateTimeFormatter.ofPattern("HH:mm:ss")));
-            updateUI();
+
+            // 2) grab the current state
+            MicrowaveState st = service.getState();
+            List<String> logs = service.getVerificationLog();
+
+            // 3) detect any change
+            boolean changed =
+                st.getTimeRemaining() != lastTime ||
+                st.getDoor() != lastDoor ||
+                st.getRadiation() != lastRad ||
+                logs.size() != lastLogSize;
+
+            if (changed) {
+                updateUI();
+                // remember for next time
+                lastTime = st.getTimeRemaining();
+                lastDoor = st.getDoor();
+                lastRad = st.getRadiation();
+                lastLogSize = logs.size();
+            }
         });
 
         // initial render
