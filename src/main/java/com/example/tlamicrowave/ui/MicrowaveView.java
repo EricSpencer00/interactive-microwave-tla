@@ -137,6 +137,13 @@ public class MicrowaveView extends VerticalLayout {
         add(verificationPanel);
         add(logNavigation);
 
+        // Internal clock that updates frontend every second
+        ui.setPollInterval(1_000);
+        ui.addPollListener(event -> {
+            // timerDisplay.setText(LocalTime.now().format(DateTimeFormatter.ofPattern("HH:mm:ss")));
+            updateUI();
+        });
+
         // initial render
         updateUI();
     }
