@@ -79,6 +79,16 @@ vaadin-dev-server-settings.json
 vaadin-dev-server.log
 vaadin-dev-server.pid
 vaadin-dev-server.pid.lock
+inputFiles.lst
+dev-bundle/
+**/dev.bundle/
+vaadin-dev-server-settings.json
+vaadin-dev-server.log
+vaadin-dev-server.pid
+vaadin-dev-server.pid.lock
+inputFiles.lst
+dev-bundle/
+**/dev.bundle/
 
 # Spring Boot specific
 spring-boot-devtools.restart.trigger
