@@ -3,7 +3,6 @@ package com.example.tlamicrowave.ui;
 import com.example.tlamicrowave.model.MicrowaveState;
 import com.example.tlamicrowave.service.MicrowaveService;
 import com.vaadin.flow.component.UI;
-import com.vaadin.flow.component.Component;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.dependency.JsModule;
 import com.vaadin.flow.component.html.Div;
@@ -61,7 +60,6 @@ public class MicrowaveView extends VerticalLayout {
         timerDisplay.addClassName("timer-display");
         timerDisplay.getStyle().set("font-size", "1.2em");
         timerDisplay.getStyle().set("margin-bottom", "1em");
-        timerDisplay.getElement().setAttribute("slot", "buttons");
 
         // 2) Microwave graphic
         graphic = new MicrowaveGraphic();
@@ -75,41 +73,46 @@ public class MicrowaveView extends VerticalLayout {
                .set("max-height", "500px")
                .set("margin-bottom", "1em");
 
-        // 3) Controls (six only: Power, Timer, +3s, Start, Cancel, Door)
+        // 3) Controls
         Button incrementButton = new Button("", e -> { service.incrementTime(); updateUI(); });
-        Button startButton     = new Button("", e -> { service.start();         updateUI(); });
-        Button cancelButton    = new Button("", e -> { service.cancel();        updateUI(); });
-        Button doorButton      = new Button("", e -> { service.toggleDoor();    updateUI(); });
-        Button powerButton     = new Button("", e -> { service.togglePower();   updateUI(); });
-        powerButton.addClassName("power-toggle-button");
-
+        Button startButton     = new Button("", e -> { service.start();       updateUI(); });
+        Button cancelButton    = new Button("", e -> { service.cancel();     /* service.stopBeep(); */ updateUI(); });
+        Button doorButton      = new Button("", e -> { service.toggleDoor(); /* service.stopBeep(); */ updateUI(); });
+        Button tickButton      = new Button("Tick", e -> { service.manualTick();  updateUI(); });
+        Button powerButton     = new Button("", e -> { service.togglePower(); updateUI(); });
         // Style buttons with background images
         incrementButton.getStyle().set("background-image", "url('/images/plus3s.png')");
         startButton.getStyle().set("background-image", "url('/images/start.png')");
         cancelButton.getStyle().set("background-image", "url('/images/cancel.png')");
         doorButton.getStyle().set("background-image", "url('/images/door.png')");
         powerButton.getStyle().set("background-image", "url('/images/power.png')");
+        // Set button sizes
+        Stream.of(incrementButton, startButton, cancelButton, doorButton)
+            .forEach(btn -> {
+                btn.getStyle().set("width", "100%");
+                btn.getStyle().set("height", "100%");
+                btn.getStyle().set("background-size", "contain");
+                btn.getStyle().set("background-repeat", "no-repeat");
+                btn.getStyle().set("background-position", "center");
+                btn.getStyle().set("border", "none");
+                btn.getStyle().set("padding", "0");
+                btn.getElement().setAttribute("slot", "buttons");
+                graphic.getElement().appendChild(btn.getElement());
+            });
 
-        // slot all six in exactly this order:
-        //   [Power] [Timer] [+3s] [Start] [Cancel] [Door]
-        List<Component> controls = List.of(
-            powerButton,
-            timerDisplay,
-            incrementButton,
-            startButton,
-            cancelButton,
-            doorButton
-        );
-        controls.forEach(c -> {
-            c.getElement().setAttribute("slot", "buttons");
-            graphic.getElement().appendChild(c.getElement());
-        });
 
-        // Add timer display to the graphic
-        graphic.getElement().appendChild(timerDisplay.getElement());
+        timerDisplay.addClassName("timer-display");
+        powerButton.addClassName("power-toggle-button");
 
-        // Add the graphic to the layout
+        // build header
+        HorizontalLayout header = new HorizontalLayout(timerDisplay, powerButton);
+        header.setAlignItems(Alignment.CENTER);
+        header.setSpacing(true);
+
+        // now add the header before the graphic
+        add(header);
         add(graphic);
+
 
         // 4) Verification panel
         verificationPanel = new Div();
@@ -147,6 +150,9 @@ public class MicrowaveView extends VerticalLayout {
         logNavigation.setSpacing(true);
 
         // assemble
+        add(timerDisplay);
+        add(graphic);
+        add(new H2("TLA+ State Trace"));
         add(verificationPanel);
         add(logNavigation);
 
@@ -154,9 +160,7 @@ public class MicrowaveView extends VerticalLayout {
         ui.setPollInterval(1_000);
         ui.addPollListener(event -> {
             // 1) keep the clock ticking
-            timerDisplay.setText(
-                LocalTime.now().format(DateTimeFormatter.ofPattern("HH:mm"))
-            );
+            timerDisplay.setText(LocalTime.now().format(DateTimeFormatter.ofPattern("HH:mm:ss")));
 
             // 2) grab the current state
             MicrowaveState st = service.getState();
@@ -219,6 +223,9 @@ public class MicrowaveView extends VerticalLayout {
             if (state.isDoorSafetyViolated()) {
                 Notification.show("⚠️ Door Safety Violated!", 3_000, Position.TOP_END);
             }
+            // if (state.isBeepSafetyViolated()) {
+            //     Notification.show("⚠️ Beep Safety Violated!", 3_000, Position.TOP_END);
+            // }
             if (state.isRadiationSafetyViolated()) {
                 Notification.show("⚠️ Radiation Safety Violated!", 3_000, Position.TOP_END);
             }

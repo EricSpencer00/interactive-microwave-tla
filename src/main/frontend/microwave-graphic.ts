@@ -4,6 +4,8 @@ import { customElement, property } from 'lit/decorators.js';
 @customElement('microwave-graphic')
 export class MicrowaveGraphic extends LitElement {
   static styles = css`
+    :host([powerOn]) .door-window { /* maybe full-color glass */ }
+
     :host {
       display: block;
       flex: 0 0 auto;
