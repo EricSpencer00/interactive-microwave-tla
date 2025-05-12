@@ -87,7 +87,7 @@ public class MicrowaveView extends VerticalLayout {
         doorButton.getStyle().set("background-image", "url('/images/door.png')");
         powerButton.getStyle().set("background-image", "url('/images/power.png')");
         // Set button sizes
-        Stream.of(incrementButton, startButton, cancelButton, doorButton)
+        Stream.of(incrementButton, startButton, cancelButton, doorButton, powerButton)
             .forEach(btn -> {
                 btn.getStyle().set("width", "100%");
                 btn.getStyle().set("height", "100%");
@@ -100,18 +100,17 @@ public class MicrowaveView extends VerticalLayout {
                 graphic.getElement().appendChild(btn.getElement());
             });
 
-
         timerDisplay.addClassName("timer-display");
-        powerButton.addClassName("power-toggle-button");
+        // powerButton.addClassName("power-toggle-button");
 
-        // build header
-        HorizontalLayout header = new HorizontalLayout(timerDisplay, powerButton);
-        header.setAlignItems(Alignment.CENTER);
-        header.setSpacing(true);
+        // // build header
+        // HorizontalLayout header = new HorizontalLayout(timerDisplay, powerButton);
+        // header.setAlignItems(Alignment.CENTER);
+        // header.setSpacing(true);
 
-        // now add the header before the graphic
-        add(header);
-        add(graphic);
+        // // now add the header before the graphic
+        // add(header);
+        // add(graphic);
 
 
         // 4) Verification panel

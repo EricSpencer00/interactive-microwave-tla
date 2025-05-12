@@ -41,7 +41,7 @@ export class MicrowaveGraphic extends LitElement {
       pointer-events: none;
     }
 
-    /* the rotating “door” container */
+    /* the rotating "door" container */
     .door {
       position: absolute;
       top: 0; left: 0;
@@ -54,7 +54,7 @@ export class MicrowaveGraphic extends LitElement {
       /* no background or border here any more */
     }
 
-    /* each “frame” piece is one side of the door */
+    /* each "frame" piece is one side of the door */
     .frame {
       position: absolute;
       background: #e5e5e5;
@@ -263,6 +263,7 @@ export class MicrowaveGraphic extends LitElement {
   @property({ type: Boolean }) heating = false;
   @property({ type: Boolean }) beeping = false;
   @property({ type: Number }) time = 0;
+  @property({ type: Boolean }) powerOn = false;
 
   private formatClock(): string {
     const now = new Date();
@@ -304,7 +305,7 @@ export class MicrowaveGraphic extends LitElement {
         <div class="beep ${this.beeping ? 'active' : ''}">BEEP!</div>
       </div>
 
-      <div class="display">${this.time > 0 ? this.formatCountdown(this.time) : this.formatClock()}</div>
+      <div class="display">${this.time > 0 ? this.formatCountdown(this.time) : (this.powerOn ? this.formatClock() : '--:--')}</div>
       <div class="controls"><slot name="buttons"></slot></div>
     </div>
   `;
