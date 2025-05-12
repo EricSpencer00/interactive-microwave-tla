@@ -26,7 +26,7 @@ public class MicrowaveService {
     @Scheduled(fixedRate = 1000)
     public void tick() {
         logger.debug("Scheduled tick running, radiation state: {}", state.getRadiation());
-        if (state.getRadiation() == MicrowaveState.RadiationState.ON) {
+        if (state.getPower() == MicrowaveState.PowerState.ON && state.getRadiation() == MicrowaveState.RadiationState.ON) {
             logger.debug("Executing tick, current time: {}", state.getTimeRemaining());
             state.tick();
             logState("Tick");
@@ -82,12 +82,19 @@ public class MicrowaveService {
         pushUpdate();
     }
 
+    public void togglePower() {
+        state.togglePower();
+        logState("TogglePower");
+        pushUpdate();
+    }
+
     private void logState(String action) {
         StringBuilder log = new StringBuilder();
         log.append("State: ").append(action).append("\n");
         log.append("/\\ door = ").append(state.getDoor()).append("\n");
         log.append("/\\ time = ").append(state.getTimeRemaining()).append("\n");
         log.append("/\\ radiation = ").append(state.getRadiation()).append("\n");
+        log.append("/\\ power = ").append(state.getPower()).append("\n");
         // log.append("/\\ beep = ").append(state.getBeep()).append("\n");
         
         // Check safety properties
@@ -103,6 +110,11 @@ public class MicrowaveService {
         if (state.isDoorStateSafetyViolated()) {
             log.append("/\\ [VIOLATION] ~(door = OPEN => radiation = OFF)\n");
         }
+        // Power safety: nothing should be on if power is OFF
+        if (state.getPower() == MicrowaveState.PowerState.OFF && (state.getRadiation() == MicrowaveState.RadiationState.ON || state.getTimeRemaining() > 0)) {
+            log.append("/\\ [VIOLATION] ~(power = OFF => radiation = OFF ∧ time = 0)\n");
+        }
+  
         
         logger.debug("State change: {}", log);
         verificationLog.add(log.toString());
@@ -123,6 +135,10 @@ public class MicrowaveService {
 
     public MicrowaveState getState() {
         return state;
+    }
+
+    public MicrowaveState.PowerState getPower() { 
+        return state.getPower(); 
     }
 
     // public void stopBeep() {

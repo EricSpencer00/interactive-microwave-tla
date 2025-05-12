@@ -119,3 +119,4 @@ coverage/
 test-results/
 src/main/bundles/dev.bundle
 src/main/bundles/prod.bundle
+src/main/bundles/dev.bundle

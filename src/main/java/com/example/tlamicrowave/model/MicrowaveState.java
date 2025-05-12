@@ -11,6 +11,7 @@ public class MicrowaveState {
     public enum DoorState { OPEN, CLOSED }
     public enum RadiationState { OFF, ON }
     public enum BeepState { OFF, ON }
+    public enum PowerState { OFF, ON }
 
     private static final int MAX_TIME = 60;
 
@@ -18,13 +19,13 @@ public class MicrowaveState {
     private RadiationState radiation = RadiationState.OFF;
     private BeepState beep = BeepState.OFF;
     private int timeRemaining = 0;
-
+    private PowerState power = PowerState.OFF;
     public boolean canIncrementTime() {
-        return radiation == RadiationState.OFF && timeRemaining < MAX_TIME;
+        return radiation == RadiationState.OFF && timeRemaining < MAX_TIME && power == PowerState.ON;
     }
 
     public boolean canStart() {
-        return radiation == RadiationState.OFF && timeRemaining > 0 && door == DoorState.CLOSED;
+        return radiation == RadiationState.OFF && timeRemaining > 0 && door == DoorState.CLOSED && power == PowerState.ON;
     }
 
     public void incrementTime() {
@@ -76,9 +77,20 @@ public class MicrowaveState {
         return radiation;
     }
 
-    public int getTimeRemaining() {
-        return timeRemaining;
+    public int getTimeRemaining() { return timeRemaining; }
+
+    public PowerState getPower() { return power; }
+
+    public void togglePower() {
+    power = (power == PowerState.OFF ? PowerState.ON : PowerState.OFF);
+    // when powering off, reset other sub-states:
+    if (power == PowerState.OFF) {
+        radiation = RadiationState.OFF;
+        timeRemaining = 0;
+        beep = BeepState.OFF;
     }
+    }
+
 
     public void manualTick() {
         if (timeRemaining > 0) {
