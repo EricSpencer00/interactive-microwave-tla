@@ -17,15 +17,25 @@ This is a Spring Boot + Vaadin application that simulates a microwave oven with 
 
 ## Running the Application
 
-MAKE SURE THAT VAADIN PRODUCTION MODE IS TURNED ON IN THE APPLICATION PROPERTIES FILE
+1. Clone the repo
 
-1. Clone the repository
-2. Navigate to the project directory
-3. Run the application:
-   ```bash
-   ./mvnw spring-boot:run
-   ```
-4. Open your browser and navigate to `http://localhost:8080`
+2. Ensure TLC is available:
+   - If you installed `tlc` on your local PATH, nothing else is needed.
+   - Otherwise, we bundle `tla2tools.jar` via Maven.  
+     Edit `src/main/resources/application.properties` so that
+     `tlc.cmd` points to your `java` executable and
+     `tlc.cmd.args` lists `-jar,/path/to/tla2tools.jar`.
+
+3. `mvn spring-boot:run`
+
+4. Ensure everything is installed via
+`java --version`
+`mvn --version`
+`tlc --version`
+
+5. see the application at [http://localhost:8080](http://localhost:8080)
+
+6. In the UI click "Verify with TLC" after running a cooking cycle.
 
 ## State Machine Properties
 

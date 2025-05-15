@@ -37,6 +37,7 @@ public class MicrowaveView extends VerticalLayout {
     private static final int LOGS_PER_PAGE = 1;
     private boolean showAllLogs = false;
     private Button showAllButton;
+    private final HorizontalLayout logNavigation;
 
     @Autowired
     public MicrowaveView(MicrowaveService service) {
@@ -87,7 +88,6 @@ public class MicrowaveView extends VerticalLayout {
             });
 
         // 4) Verification panel
-        // 4) Verification panel
         verificationPanel = new Div();
         verificationPanel.addClassName("verification-panel");
         verificationPanel.getStyle().set("padding", "1em")
@@ -102,9 +102,8 @@ public class MicrowaveView extends VerticalLayout {
                                     .set("overflow-y", "auto")
                                     .set("overflow-x", "hidden");
 
-
         // Navigation buttons for logs
-        HorizontalLayout logNavigation = new HorizontalLayout();
+        logNavigation = new HorizontalLayout();
         Button prevButton = new Button("Previous", e -> {
             if (currentLogIndex > 0) {
                 currentLogIndex--;
@@ -122,7 +121,20 @@ public class MicrowaveView extends VerticalLayout {
             showAllButton.setText(showAllLogs ? "Show One" : "Show All");
             updateLogDisplay();
         });
-        logNavigation.add(prevButton, nextButton, showAllButton);
+        Button verifyBtn = new Button("Verify with TLC", e -> {
+            service.verifyWithTlc();
+            var result = service.getLastTlcResult();
+            if (result == null) {
+                Notification.show("TLC not run yet", 2_000, Position.TOP_END);
+            } else if (result.invariantHolds) {
+                Notification.show("✔ Invariant holds!", 3_000, Position.TOP_END);
+            } else {
+                Notification.show("❌ Violation detected", 3_000, Position.TOP_END);
+                // dump the raw TLC output into the panel
+                verificationPanel.setText(result.rawOutput);
+            }
+        });
+        logNavigation.add(prevButton, nextButton, showAllButton, verifyBtn);
         logNavigation.setSpacing(true);
 
         // Update bounding box when show all button is clicked

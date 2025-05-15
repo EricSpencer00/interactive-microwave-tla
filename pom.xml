@@ -35,6 +35,11 @@
             <artifactId>lombok</artifactId>
             <scope>provided</scope>
         </dependency>
+        <dependency>
+            <groupId>org.lamport</groupId>
+            <artifactId>tlaplus-tla2tools</artifactId>
+            <version>1.7.0</version>
+        </dependency>
     </dependencies>
 
     <build>

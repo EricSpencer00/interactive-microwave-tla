@@ -9,13 +9,21 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import java.util.ArrayList;
 import java.util.List;
+import org.springframework.beans.factory.annotation.Autowired;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 @Service
 public class MicrowaveService {
     private static final Logger log = LoggerFactory.getLogger(MicrowaveService.class);
     private final MicrowaveState state = new MicrowaveState();
     private final List<String> verificationLog = new ArrayList<>();
     private UI ui;
+
+    @Autowired
+    private TlcIntegrationService tlcService;
+
+    private TlcIntegrationService.TlcResult lastTlcResult;
 
     public void setUI(UI ui) { this.ui = ui; }
 
@@ -94,4 +102,19 @@ public class MicrowaveService {
     }
 
     public MicrowaveState getState() { return state; }
+
+    @Scheduled(fixedRate = 1000)
+    public void verifyWithTlc() {
+        try {
+            tlcService.generateSpecFile();
+            tlcService.generateConfigFile();
+            lastTlcResult = tlcService.runTlc();
+        } catch (Exception e) {
+            log.error("TLC integration failed", e);
+        }
+    }
+
+    public TlcIntegrationService.TlcResult getLastTlcResult() {
+        return lastTlcResult;
+    }
 }
