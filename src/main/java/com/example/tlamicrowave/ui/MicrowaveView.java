@@ -128,10 +128,22 @@ public class MicrowaveView extends VerticalLayout {
                 Notification.show("TLC not run yet", 2_000, Position.TOP_END);
             } else if (result.invariantHolds) {
                 Notification.show("✔ Invariant holds!", 3_000, Position.TOP_END);
+                verificationPanel.setText("Invariant holds! No violations found.");
             } else {
                 Notification.show("❌ Violation detected", 3_000, Position.TOP_END);
-                // dump the raw TLC output into the panel
-                verificationPanel.setText(result.rawOutput);
+                if (result.traceStates != null && !result.traceStates.isEmpty()) {
+                    StringBuilder sb = new StringBuilder();
+                    sb.append("Violation Trace:\n\n");
+                    for (int i = 0; i < result.traceStates.size(); i++) {
+                        sb.append("State ").append(i).append(":\n");
+                        result.traceStates.get(i).forEach((k, v) -> 
+                            sb.append("  ").append(k).append(" = ").append(v).append("\n"));
+                        sb.append("\n");
+                    }
+                    verificationPanel.setText(sb.toString());
+                } else {
+                    verificationPanel.setText(result.rawOutput);
+                }
             }
         });
         logNavigation.add(prevButton, nextButton, showAllButton, verifyBtn);

@@ -110,6 +110,10 @@ public class TlcIntegrationService {
      */
     public List<Map<String, String>> parseTlcTrace(String rawOutput) {
         List<Map<String, String>> states = new ArrayList<>();
+        if (rawOutput == null || rawOutput.trim().isEmpty()) {
+            return states;
+        }
+
         Pattern statePattern = Pattern.compile("^State (\\d+)");
         Pattern assignPattern = Pattern.compile("^\\s*(\\w+) = (\\w+)");
         Map<String, String> current = null;
