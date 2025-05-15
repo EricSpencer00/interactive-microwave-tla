@@ -78,15 +78,25 @@ public class TlcIntegrationService {
      * Executes the TLC model checker against the generated spec, returning the results.
      */
     public TlcResult runTlc() throws IOException, InterruptedException {
+        // Use files from root directory
+        Path specPath = Paths.get(System.getProperty("user.dir"), SPEC_FILENAME);
+        Path cfgPath = Paths.get(System.getProperty("user.dir"), CFG_FILENAME);
+        
+        if (!Files.exists(specPath) || !Files.exists(cfgPath)) {
+            throw new IOException("TLA+ specification files not found in root directory");
+        }
+
+        // Now run TLC
         List<String> command = new ArrayList<>();
         Path scriptPath = Paths.get(System.getProperty("user.dir"), "run-tlc.sh");
         command.add(scriptPath.toString());
-        command.addAll(Arrays.asList(tlcArgs.split(",")));
-        command.add(SPEC_FILENAME);
+        
+        command.add(specPath.toString());
         command.add("-config");
-        command.add(CFG_FILENAME);
+        command.add(cfgPath.toString());
+
         ProcessBuilder pb = new ProcessBuilder(command);
-        pb.directory(Paths.get(specDirPath).toFile());
+        pb.directory(Paths.get(System.getProperty("user.dir")).toFile());  // Run from root directory
         pb.redirectErrorStream(true);
         Process proc = pb.start();
 
@@ -114,27 +124,57 @@ public class TlcIntegrationService {
             return states;
         }
 
-        Pattern statePattern = Pattern.compile("^State (\\d+)");
-        Pattern assignPattern = Pattern.compile("^\\s*(\\w+) = (\\w+)");
+        // Debug log the raw output
+        System.out.println("Raw TLC output:");
+        System.out.println(rawOutput);
+
+        // Look for the counterexample section
+        String[] lines = rawOutput.split("\\R");
+        boolean inCounterexample = false;
         Map<String, String> current = null;
 
-        for (String line : rawOutput.split("\\R")) {
-            Matcher mState = statePattern.matcher(line);
-            if (mState.find()) {
-                if (current != null) {
-                    states.add(current);
-                }
-                current = new LinkedHashMap<>();
-            } else if (current != null) {
-                Matcher mAssign = assignPattern.matcher(line);
-                if (mAssign.find()) {
-                    current.put(mAssign.group(1), mAssign.group(2));
+        for (String line : lines) {
+            // Skip empty lines
+            if (line.trim().isEmpty()) {
+                continue;
+            }
+
+            // Check if we're entering a counterexample
+            if (line.contains("Error: Invariant") || line.contains("Error: Deadlock")) {
+                inCounterexample = true;
+                continue;
+            }
+
+            // Only process lines if we're in a counterexample
+            if (inCounterexample) {
+                if (line.startsWith("State ")) {
+                    if (current != null) {
+                        states.add(current);
+                    }
+                    current = new LinkedHashMap<>();
+                } else if (current != null && line.trim().startsWith("/\\")) {
+                    // Parse state assignments
+                    String[] parts = line.trim().substring(3).split("=");
+                    if (parts.length == 2) {
+                        String key = parts[0].trim();
+                        String value = parts[1].trim();
+                        current.put(key, value);
+                    }
                 }
             }
         }
+
+        // Add the last state if exists
         if (current != null) {
             states.add(current);
         }
+
+        // Debug log the parsed states
+        System.out.println("Parsed states: " + states.size());
+        for (int i = 0; i < states.size(); i++) {
+            System.out.println("State " + i + ": " + states.get(i));
+        }
+
         return states;
     }
 

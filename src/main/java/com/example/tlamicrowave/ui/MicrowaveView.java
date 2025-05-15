@@ -122,28 +122,35 @@ public class MicrowaveView extends VerticalLayout {
             updateLogDisplay();
         });
         Button verifyBtn = new Button("Verify with TLC", e -> {
-            service.verifyWithTlc();
-            var result = service.getLastTlcResult();
-            if (result == null) {
-                Notification.show("TLC not run yet", 2_000, Position.TOP_END);
-            } else if (result.invariantHolds) {
-                Notification.show("✔ Invariant holds!", 3_000, Position.TOP_END);
-                verificationPanel.setText("Invariant holds! No violations found.");
-            } else {
-                Notification.show("❌ Violation detected", 3_000, Position.TOP_END);
-                if (result.traceStates != null && !result.traceStates.isEmpty()) {
-                    StringBuilder sb = new StringBuilder();
-                    sb.append("Violation Trace:\n\n");
-                    for (int i = 0; i < result.traceStates.size(); i++) {
-                        sb.append("State ").append(i).append(":\n");
-                        result.traceStates.get(i).forEach((k, v) -> 
-                            sb.append("  ").append(k).append(" = ").append(v).append("\n"));
-                        sb.append("\n");
-                    }
-                    verificationPanel.setText(sb.toString());
+            try {
+                service.verifyWithTlc();
+                var result = service.getLastTlcResult();
+                if (result == null) {
+                    Notification.show("TLC not run yet", 2_000, Position.TOP_END);
+                    verificationPanel.setText("TLC verification not run yet.");
+                } else if (result.invariantHolds) {
+                    Notification.show("✔ Invariant holds!", 3_000, Position.TOP_END);
+                    verificationPanel.setText("Invariant holds! No violations found.");
                 } else {
-                    verificationPanel.setText(result.rawOutput);
+                    Notification.show("❌ Violation detected", 3_000, Position.TOP_END);
+                    if (result.traceStates != null && !result.traceStates.isEmpty()) {
+                        StringBuilder sb = new StringBuilder();
+                        sb.append("Violation Trace:\n\n");
+                        for (int i = 0; i < result.traceStates.size(); i++) {
+                            sb.append("State ").append(i).append(":\n");
+                            result.traceStates.get(i).forEach((k, v) -> 
+                                sb.append("  ").append(k).append(" = ").append(v).append("\n"));
+                            sb.append("\n");
+                        }
+                        verificationPanel.setText(sb.toString());
+                    } else {
+                        // If no trace states, show the raw output
+                        verificationPanel.setText("TLC Output:\n\n" + result.rawOutput);
+                    }
                 }
+            } catch (Exception ex) {
+                Notification.show("Error running TLC: " + ex.getMessage(), 5_000, Position.TOP_END);
+                verificationPanel.setText("Error running TLC:\n\n" + ex.getMessage());
             }
         });
         logNavigation.add(prevButton, nextButton, showAllButton, verifyBtn);
