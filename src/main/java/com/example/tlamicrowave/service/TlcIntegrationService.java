@@ -79,7 +79,8 @@ public class TlcIntegrationService {
      */
     public TlcResult runTlc() throws IOException, InterruptedException {
         List<String> command = new ArrayList<>();
-        command.add(tlcCommand);
+        Path scriptPath = Paths.get(System.getProperty("user.dir"), "run-tlc.sh");
+        command.add(scriptPath.toString());
         command.addAll(Arrays.asList(tlcArgs.split(",")));
         command.add(SPEC_FILENAME);
         command.add("-config");
