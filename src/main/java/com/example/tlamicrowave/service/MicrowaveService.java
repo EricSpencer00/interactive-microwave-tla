@@ -194,53 +194,97 @@ public class MicrowaveService {
     public synchronized void logState(String action) {
         StringBuilder b = new StringBuilder();
         if (verificationLogService.isEmpty()) {
-            b.append("---- MODULE Microwave ----\n")
-             .append("EXTENDS Integers, TLC\n\n")
-             .append("VARIABLES door, time, radiation, power\n\n")
-             .append("CONSTANTS OPEN, CLOSED, ON, OFF\n\n")
-             .append("Init ==\n")
-             .append("/\\ door = CLOSED\n")
-             .append("/\\ time = 0\n")
-             .append("/\\ radiation = OFF\n")
-             .append("/\\ power = OFF\n\n")
-             .append("TogglePower ==\n")
-             .append("/\\ UNCHANGED <<door, time, radiation>>\n")
-             .append("/\\ power' = IF power = ON THEN OFF ELSE ON\n\n")
-             .append("IncrementTime ==\n")
-             .append("/\\ UNCHANGED <<door, radiation, power>>\n")
-             .append("/\\ time' = time + 3\n\n")
-             .append("Start ==\n")
-             .append("/\\ time > 0\n")
-             .append("/\\ radiation' = ON\n")
-             .append("/\\ UNCHANGED <<door, time, power>>\n\n")
-             .append("Tick ==\n")
-             .append("/\\ time > 0\n")
-             .append("/\\ time' = time - 1\n")
-             .append("/\\ UNCHANGED <<door, power>>\n")
-             .append("/\\ radiation' = IF time' = 0 THEN OFF ELSE radiation\n\n")
-             .append("Cancel ==\n")
-             .append("/\\ time' = 0\n")
-             .append("/\\ radiation' = OFF\n")
-             .append("/\\ UNCHANGED <<door, power>>\n\n")
-             .append("CloseDoor ==\n")
-             .append("/\\ door = OPEN\n")
-             .append("/\\ door' = CLOSED\n")
-             .append("/\\ UNCHANGED <<time, radiation, power>>\n\n")
-             .append("OpenDoor ==\n")
-             .append("/\\ door = CLOSED\n")
-             .append("/\\ door' = OPEN\n")
-             .append("/\\ radiation' = OFF\n")
-             .append("/\\ UNCHANGED <<time, power>>\n\n")
-             .append("Next == TogglePower \\/ IncrementTime \\/ Start \\/ Tick \\/ Cancel \\/ CloseDoor \\/ OpenDoor\n\n")
-             .append("Safe == ~(radiation = ON /\\ door = OPEN)\n\n")
-             .append("Spec == Init /\\ [][Next]_<<door,time,radiation,power>>\n\n")
-             .append("====\n");
+            if (powerButtonEnabled) {
+                b.append("---- MODULE Microwave ----\n")
+                 .append("EXTENDS Integers, TLC\n\n")
+                 .append("VARIABLES door, time, radiation, power\n\n")
+                 .append("CONSTANTS OPEN, CLOSED, ON, OFF\n\n")
+                 .append("Init ==\n")
+                 .append("/\\ door = CLOSED\n")
+                 .append("/\\ time = 0\n")
+                 .append("/\\ radiation = OFF\n")
+                 .append("/\\ power = OFF\n\n")
+                 .append("TogglePower ==\n")
+                 .append("/\\ UNCHANGED <<door, time, radiation>>\n")
+                 .append("/\\ power' = IF power = ON THEN OFF ELSE ON\n\n")
+                 .append("IncrementTime ==\n")
+                 .append("/\\ UNCHANGED <<door, radiation, power>>\n")
+                 .append("/\\ time' = time + 3\n\n")
+                 .append("Start ==\n")
+                 .append("/\\ time > 0\n")
+                 .append("/\\ radiation' = ON\n")
+                 .append("/\\ UNCHANGED <<door, time, power>>\n\n")
+                 .append("Tick ==\n")
+                 .append("/\\ time > 0\n")
+                 .append("/\\ time' = time - 1\n")
+                 .append("/\\ UNCHANGED <<door, power>>\n")
+                 .append("/\\ radiation' = IF time' = 0 THEN OFF ELSE radiation\n\n")
+                 .append("Cancel ==\n")
+                 .append("/\\ time' = 0\n")
+                 .append("/\\ radiation' = OFF\n")
+                 .append("/\\ UNCHANGED <<door, power>>\n\n")
+                 .append("CloseDoor ==\n")
+                 .append("/\\ door = OPEN\n")
+                 .append("/\\ door' = CLOSED\n")
+                 .append("/\\ UNCHANGED <<time, radiation, power>>\n\n")
+                 .append("OpenDoor ==\n")
+                 .append("/\\ door = CLOSED\n")
+                 .append("/\\ door' = OPEN\n")
+                 .append("/\\ radiation' = OFF\n")
+                 .append("/\\ UNCHANGED <<time, power>>\n\n")
+                 .append("Next == TogglePower \\/ IncrementTime \\/ Start \\/ Tick \\/ Cancel \\/ CloseDoor \\/ OpenDoor\n\n")
+                 .append("Safe == ~(radiation = ON /\\ door = OPEN)\n\n")
+                 .append("Spec == Init /\\ [][Next]_<<door,time,radiation,power>>\n\n")
+                 .append("====\n");
+            } else {
+                // Version without power
+                b.append("---- MODULE Microwave ----\n")
+                 .append("EXTENDS Integers, TLC\n\n")
+                 .append("VARIABLES door, time, radiation\n\n")
+                 .append("CONSTANTS OPEN, CLOSED, ON, OFF\n\n")
+                 .append("Init ==\n")
+                 .append("/\\ door = CLOSED\n")
+                 .append("/\\ time = 0\n")
+                 .append("/\\ radiation = OFF\n\n")
+                 .append("IncrementTime ==\n")
+                 .append("/\\ UNCHANGED <<door, radiation>>\n")
+                 .append("/\\ time' = time + 3\n\n")
+                 .append("Start ==\n")
+                 .append("/\\ time > 0\n")
+                 .append("/\\ radiation' = ON\n")
+                 .append("/\\ UNCHANGED <<door, time>>\n\n")
+                 .append("Tick ==\n")
+                 .append("/\\ time > 0\n")
+                 .append("/\\ time' = time - 1\n")
+                 .append("/\\ UNCHANGED <<door>>\n")
+                 .append("/\\ radiation' = IF time' = 0 THEN OFF ELSE radiation\n\n")
+                 .append("Cancel ==\n")
+                 .append("/\\ time' = 0\n")
+                 .append("/\\ radiation' = OFF\n")
+                 .append("/\\ UNCHANGED <<door>>\n\n")
+                 .append("CloseDoor ==\n")
+                 .append("/\\ door = OPEN\n")
+                 .append("/\\ door' = CLOSED\n")
+                 .append("/\\ UNCHANGED <<time, radiation>>\n\n")
+                 .append("OpenDoor ==\n")
+                 .append("/\\ door = CLOSED\n")
+                 .append("/\\ door' = OPEN\n")
+                 .append("/\\ radiation' = OFF\n")
+                 .append("/\\ UNCHANGED <<time>>\n\n")
+                 .append("Next == IncrementTime \\/ Start \\/ Tick \\/ Cancel \\/ CloseDoor \\/ OpenDoor\n\n")
+                 .append("Safe == ~(radiation = ON /\\ door = OPEN)\n\n")
+                 .append("Spec == Init /\\ [][Next]_<<door,time,radiation>>\n\n")
+                 .append("====\n");
+            }
         }
         b.append("(* State: ").append(action).append(" *)\n");
         b.append("/\\ door = ").append(state.getDoor()).append("\n");
         b.append("/\\ time = ").append(state.getTimeRemaining()).append("\n");
         b.append("/\\ radiation = ").append(state.getRadiation()).append("\n");
-        b.append("/\\ power = ").append(state.getPower()).append("\n\n");
+        if (powerButtonEnabled) {
+            b.append("/\\ power = ").append(state.getPower()).append("\n");
+        }
+        b.append("\n");
         
         // Add new state to log
         verificationLogService.addLogEntry(b.toString());
@@ -287,7 +331,9 @@ public class MicrowaveService {
                 stateMap.put("door", extractValueFromLog(stateEntry, "door"));
                 stateMap.put("time", extractValueFromLog(stateEntry, "time"));
                 stateMap.put("radiation", extractValueFromLog(stateEntry, "radiation"));
-                stateMap.put("power", extractValueFromLog(stateEntry, "power"));
+                if (powerButtonEnabled) {
+                    stateMap.put("power", extractValueFromLog(stateEntry, "power"));
+                }
                 traceStates.add(stateMap);
             }
             
@@ -315,7 +361,10 @@ public class MicrowaveService {
                         output.append("  door = ").append(state.get("door")).append("\n");
                         output.append("  radiation = ").append(state.get("radiation")).append("\n");
                         output.append("  time = ").append(state.get("time")).append("\n");
-                        output.append("  power = ").append(state.get("power")).append("\n\n");
+                        if (powerButtonEnabled) {
+                            output.append("  power = ").append(state.get("power")).append("\n");
+                        }
+                        output.append("\n");
                     }
                 }
                 
@@ -390,8 +439,31 @@ public class MicrowaveService {
     }
     
     public void setPowerButtonEnabled(boolean enabled) {
-        this.powerButtonEnabled = enabled;
-        verificationLogService.addLogEntry("(* Power Button " + (enabled ? "ENABLED" : "DISABLED") + " *)");
-        pushUpdate();
+        if (this.powerButtonEnabled != enabled) {
+            this.powerButtonEnabled = enabled;
+            verificationLogService.addLogEntry("(* Power Button " + (enabled ? "ENABLED" : "DISABLED") + " *)");
+            
+            // If disabling power button, ensure power is OFF
+            if (!enabled && state.getPower() == MicrowaveState.PowerState.ON) {
+                state.forceDangerousState(
+                    state.getDoor(),
+                    state.getRadiation(),
+                    state.getTimeRemaining(),
+                    MicrowaveState.PowerState.OFF
+                );
+                // Also turn off radiation when power goes off
+                if (state.getRadiation() == MicrowaveState.RadiationState.ON) {
+                    state.forceDangerousState(
+                        state.getDoor(),
+                        MicrowaveState.RadiationState.OFF,
+                        state.getTimeRemaining(),
+                        MicrowaveState.PowerState.OFF
+                    );
+                }
+                logState("Power Button Disabled");
+            }
+            
+            pushUpdate();
+        }
     }
 }

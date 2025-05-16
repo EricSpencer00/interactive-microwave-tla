@@ -339,10 +339,15 @@ public class MicrowaveView extends VerticalLayout {
                 HorizontalLayout timerLayout = (HorizontalLayout) timerDisplay.getParent().get();
                 Component powerIndicator = timerLayout.getComponentAt(0);
                 if (powerIndicator instanceof Div) {
-                    if (state.getPower() == MicrowaveState.PowerState.ON) {
-                        ((Div) powerIndicator).getStyle().set("background-color", "#28a745");
+                    if (!service.isPowerButtonEnabled()) {
+                        ((Div) powerIndicator).getStyle().set("display", "none");
                     } else {
-                        ((Div) powerIndicator).getStyle().set("background-color", "#dc3545");
+                        ((Div) powerIndicator).getStyle().remove("display");
+                        if (state.getPower() == MicrowaveState.PowerState.ON) {
+                            ((Div) powerIndicator).getStyle().set("background-color", "#28a745");
+                        } else {
+                            ((Div) powerIndicator).getStyle().set("background-color", "#dc3545");
+                        }
                     }
                 }
             }
