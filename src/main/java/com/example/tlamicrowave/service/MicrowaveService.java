@@ -11,7 +11,6 @@ import java.util.List;
 import java.util.Objects;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
-import lombok.extern.slf4j.Slf4j;
 import java.util.Map;
 import java.util.stream.Collectors;
 import java.util.ArrayList;
@@ -19,7 +18,6 @@ import java.util.LinkedHashMap;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-@Slf4j
 @Service
 public class MicrowaveService {
     private static final Logger log = LoggerFactory.getLogger(MicrowaveService.class);
@@ -27,6 +25,7 @@ public class MicrowaveService {
     private UI ui;
     private MicrowaveState lastLoggedState = new MicrowaveState().clone(); // Track last logged state
     private boolean dangerousMode = false; // Default to safe mode
+    private boolean powerButtonEnabled = true; // Default to enabled
 
     @Value("${microwave.tick-interval:1000}")
     private long tickInterval;
@@ -384,5 +383,15 @@ public class MicrowaveService {
         }
         log.debug("No safety violations found in direct trace check");
         return true;
+    }
+
+    public boolean isPowerButtonEnabled() {
+        return powerButtonEnabled;
+    }
+    
+    public void setPowerButtonEnabled(boolean enabled) {
+        this.powerButtonEnabled = enabled;
+        verificationLogService.addLogEntry("(* Power Button " + (enabled ? "ENABLED" : "DISABLED") + " *)");
+        pushUpdate();
     }
 }

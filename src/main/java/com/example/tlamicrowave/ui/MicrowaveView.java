@@ -27,6 +27,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import java.util.Arrays;
 import com.vaadin.flow.component.Component;
+import com.vaadin.flow.component.orderedlayout.FlexLayout;
 
 @Route("")
 @PermitAll
@@ -48,7 +49,7 @@ public class MicrowaveView extends VerticalLayout {
     private Button verifyBtn;
     private final HorizontalLayout logNavigation;
     private static final Logger log = LoggerFactory.getLogger(MicrowaveView.class);
-    private final Checkbox dangerModeToggle;
+    private Button powerButton;
 
     @Autowired
     public MicrowaveView(MicrowaveService service, VerificationLogService logService) {
@@ -58,15 +59,25 @@ public class MicrowaveView extends VerticalLayout {
         service.setUI(ui);
 
         setSizeFull();
-        setAlignItems(Alignment.CENTER);
-        setJustifyContentMode(JustifyContentMode.CENTER);
+        setPadding(false);
+        setMargin(false);
+        setSpacing(false);
         
-        // Create top bar with dangerous mode toggle
+        FlexLayout mainLayout = new FlexLayout();
+        mainLayout.setSizeFull();
+        
+        FeatureTogglesPanel featureToggles = new FeatureTogglesPanel(service);
+        
+        VerticalLayout microwaveContent = new VerticalLayout();
+        microwaveContent.setSizeFull();
+        microwaveContent.setAlignItems(Alignment.CENTER);
+        microwaveContent.setJustifyContentMode(JustifyContentMode.CENTER);
+        microwaveContent.setPadding(true);
+        
         HorizontalLayout topBar = new HorizontalLayout();
         topBar.setWidthFull();
-        topBar.setJustifyContentMode(JustifyContentMode.END);
+        topBar.setJustifyContentMode(JustifyContentMode.CENTER);
         
-        // Add title to the top left
         H2 title = new H2("Interactive TLA Microwave");
         title.getStyle()
             .set("margin", "0")
@@ -74,49 +85,19 @@ public class MicrowaveView extends VerticalLayout {
             .set("color", "#333")
             .set("font-weight", "bold");
         
-        // Create a container for the title and position it at the left
-        Div titleContainer = new Div(title);
-        titleContainer.getStyle()
-            .set("margin-right", "auto") // Pushes everything else to the right
-            .set("padding-left", "20px");
-        
-        topBar.add(titleContainer);
-        
-        dangerModeToggle = new Checkbox("⚠️ Dangerous Mode");
-        dangerModeToggle.addValueChangeListener(e -> {
-            boolean dangerous = e.getValue();
-            service.setDangerousMode(dangerous);
-            if (dangerous) {
-                Notification.show("⚠️ Dangerous Mode Enabled - Safety protections disabled!", 
-                    3000, Position.TOP_CENTER);
-            } else {
-                Notification.show("✅ Safe Mode Enabled - Safety protections active", 
-                    3000, Position.TOP_CENTER);
-            }
-        });
-        
-        dangerModeToggle.getStyle()
-            .set("margin-right", "20px")
-            .set("padding", "8px")
-            .set("background-color", "#fff3cd")
-            .set("border-radius", "4px")
-            .set("border", "1px solid #ffeeba");
-            
-        topBar.add(dangerModeToggle);
-        add(topBar);
+        topBar.add(title);
+        microwaveContent.add(topBar);
 
-        // 1) Timer display with power indicator
         HorizontalLayout timerLayout = new HorizontalLayout();
         timerLayout.setAlignItems(Alignment.CENTER);
         timerLayout.setSpacing(true);
         
-        // Create power indicator light
         Div powerIndicator = new Div();
         powerIndicator.getStyle()
             .set("width", "20px")
             .set("height", "20px")
             .set("border-radius", "50%")
-            .set("background-color", "#dc3545") // Default red (OFF)
+            .set("background-color", "#dc3545")
             .set("margin-right", "5px")
             .set("border", "2px solid #333");
             
@@ -126,26 +107,23 @@ public class MicrowaveView extends VerticalLayout {
         
         timerLayout.add(powerIndicator, timerDisplay);
         timerLayout.getStyle().set("margin-bottom", "1em");
+        microwaveContent.add(timerLayout);
 
-        // 2) Microwave graphic
         graphic = new MicrowaveGraphic();
+        microwaveContent.add(graphic);
 
-        // 3) Controls
         Button incrementButton = new Button("", e -> { service.incrementTime(); updateUI(); });
         Button startButton     = new Button("", e -> { service.start();       updateUI(); });
         Button cancelButton    = new Button("", e -> { service.cancel();     /* service.stopBeep(); */ updateUI(); });
         Button doorButton      = new Button("", e -> { service.toggleDoor(); /* service.stopBeep(); */ updateUI(); });
-        // Button tickButton      = new Button("Tick", e -> { service.manualTick();  updateUI(); });
-        Button powerButton     = new Button("", e -> { service.togglePower(); updateUI(); });
+        powerButton           = new Button("", e -> { service.togglePower(); updateUI(); });
 
-        // Style buttons with background images
         incrementButton.getStyle().set("background-image", "url('/images/plus3s.png')");
         startButton.getStyle().set("background-image", "url('/images/start.png')");
         cancelButton.getStyle().set("background-image", "url('/images/cancel.png')");
         doorButton.getStyle().set("background-image", "url('/images/door.png')");
         powerButton.getStyle().set("background-image", "url('/images/power.png')");
 
-        // Set button sizes
         Stream.of(incrementButton, startButton, cancelButton, doorButton, powerButton)
             .forEach(btn -> {
                 btn.getStyle().set("width", "100%");
@@ -159,7 +137,6 @@ public class MicrowaveView extends VerticalLayout {
                 graphic.getElement().appendChild(btn.getElement());
             });
 
-        // 4) Verification panel
         verificationPanel = new Div();
         verificationPanel.addClassName("verification-panel");
         verificationPanel.getStyle().set("padding", "1em")
@@ -173,8 +150,9 @@ public class MicrowaveView extends VerticalLayout {
                                     .set("max-height", "400px")
                                     .set("overflow-y", "auto")
                                     .set("overflow-x", "hidden");
+        microwaveContent.add(new H2("TLA+ State Trace"));
+        microwaveContent.add(verificationPanel);
 
-        // Navigation buttons for logs
         logNavigation = new HorizontalLayout();
         Button prevButton = new Button("Previous", e -> {
             if (currentLogIndex > 0) {
@@ -197,11 +175,8 @@ public class MicrowaveView extends VerticalLayout {
         });
         Button clearLogButton = new Button("Clear Log", e -> {
             try {
-                // Use the clear method in VerificationLogService
                 logService.clear();
-                // Add back initial state
                 service.logState("Initial");
-                // Update the UI
                 allLogs.clear();
                 allLogs.addAll(service.getVerificationLog());
                 currentLogIndex = 0;
@@ -218,21 +193,17 @@ public class MicrowaveView extends VerticalLayout {
             updateLogDisplay();
         });
         
-        // Create the verify button as a class field
         verifyBtn = new Button("Verify with TLC", e -> {
             try {
-                // Show immediate feedback to user
                 verifyBtn.setEnabled(false);
                 verifyBtn.setText("Verifying...");
                 verificationPanel.setText("Verification in progress...\nPlease wait, this may take a few seconds...");
                 
-                // Run the verification on a background thread to avoid blocking the UI
                 new Thread(() -> {
                     try {
                         log.debug("Starting TLC verification from UI");
                         service.verifyWithTlc();
                         
-                        // Update UI on completion
                         ui.access(() -> {
                             log.debug("TLC verification completed, updating UI");
                             verifyBtn.setEnabled(true);
@@ -258,7 +229,6 @@ public class MicrowaveView extends VerticalLayout {
                                 verificationPanel.setText("Safety verification completed successfully!\n\n" +
                                                         "The microwave behaved safely - radiation was never ON while the door was OPEN.");
                             } else {
-                                // Check if it's a log violation or a model checking violation
                                 boolean isLogViolation = result.rawOutput.contains("Safety violations found in execution log");
                                 
                                 if (isLogViolation) {
@@ -270,7 +240,6 @@ public class MicrowaveView extends VerticalLayout {
                                 StringBuilder sb = new StringBuilder();
                                 sb.append("SAFETY VIOLATION DETECTED!\n\n");
                                 
-                                // Always display a clear explanation of the violation
                                 sb.append("The safety property 'Safe == ~(radiation = ON /\\ door = OPEN)' was violated.\n");
                                 sb.append("This means the microwave had radiation ON while the door was OPEN.\n\n");
                                 
@@ -314,31 +283,28 @@ public class MicrowaveView extends VerticalLayout {
         });
         logNavigation.add(prevButton, nextButton, latestButton, clearLogButton, showAllButton, verifyBtn);
         logNavigation.setSpacing(true);
+        microwaveContent.add(logNavigation);
 
-        // Update bounding box when show all button is clicked
         showAllButton.addClickListener(e -> {
             verificationPanel.getStyle().set("min-height", showAllLogs ? "400px" : "100px");
         });
 
-        // assemble
-        add(timerLayout);
-        add(graphic);
-        add(new H2("TLA+ State Trace"));
-        add(verificationPanel);
-        add(logNavigation);
+        mainLayout.add(featureToggles);
+        mainLayout.add(microwaveContent);
+        mainLayout.setFlexGrow(1, microwaveContent);
+        
+        add(mainLayout);
+        setSizeFull();
 
         service.logState("Initial");
         allLogs.addAll(service.getVerificationLog());
         updateLogDisplay();
 
-        // Internal clock that updates frontend every second
         ui.setPollInterval(1_000);
         ui.addPollListener(event -> {
-            // timerDisplay.setText(LocalTime.now().format(DateTimeFormatter.ofPattern("HH:mm:ss")));
             updateUI();
         });
 
-        // initial render
         updateUI();
     }
 
@@ -346,14 +312,12 @@ public class MicrowaveView extends VerticalLayout {
         verificationPanel.removeAll();
         if (!allLogs.isEmpty()) {
             if (showAllLogs) {
-                // Show all logs
                 allLogs.forEach(log -> {
                     Div entry = new Div(log);
                     entry.getStyle().set("margin", "0.2em 0");
                     verificationPanel.add(entry);
                 });
             } else {
-                // Show single log
                 if (currentLogIndex < allLogs.size()) {
                     Div entry = new Div(allLogs.get(currentLogIndex));
                     entry.getStyle().set("margin", "0.2em 0");
@@ -367,70 +331,53 @@ public class MicrowaveView extends VerticalLayout {
         ui.access(() -> {
             MicrowaveState state = service.getState();
 
-            // Update microwave graphic
             graphic.getElement().setProperty("doorOpen", state.getDoor() == MicrowaveState.DoorState.OPEN);
             graphic.getElement().setProperty("heating", state.getRadiation() == MicrowaveState.RadiationState.ON);
-            // graphic.getElement().setProperty("beeping", state.getBeep() == MicrowaveState.BeepState.ON);
             graphic.getElement().setProperty("time", state.getTimeRemaining());
 
-            // Update power indicator color based on power state
             if (timerDisplay.getParent().isPresent() && timerDisplay.getParent().get() instanceof HorizontalLayout) {
                 HorizontalLayout timerLayout = (HorizontalLayout) timerDisplay.getParent().get();
                 Component powerIndicator = timerLayout.getComponentAt(0);
                 if (powerIndicator instanceof Div) {
                     if (state.getPower() == MicrowaveState.PowerState.ON) {
-                        // Green when power is ON
                         ((Div) powerIndicator).getStyle().set("background-color", "#28a745");
                     } else {
-                        // Red when power is OFF
                         ((Div) powerIndicator).getStyle().set("background-color", "#dc3545");
                     }
                 }
             }
 
-            // Update dangerous mode indicator UI
-            if (service.isDangerousMode()) {
-                dangerModeToggle.getStyle()
-                    .set("background-color", "#f8d7da")
-                    .set("border", "1px solid #f5c6cb");
-            } else {
-                dangerModeToggle.getStyle()
-                    .set("background-color", "#fff3cd")
-                    .set("border", "1px solid #ffeeba");
+            if (powerButton != null) {
+                if (service.isPowerButtonEnabled()) {
+                    powerButton.getElement().getStyle().remove("display");
+                } else {
+                    powerButton.getElement().getStyle().set("display", "none");
+                }
             }
 
-            // Check safety violations - only show in UI if not in dangerous mode
             if (!service.isDangerousMode()) {
                 if (state.isDoorSafetyViolated()) {
                     Notification.show("⚠️ Door Safety Violated!", 3_000, Position.TOP_END);
                 }
-                // if (state.isBeepSafetyViolated()) {
-                //     Notification.show("⚠️ Beep Safety Violated!", 3_000, Position.TOP_END);
-                // }
                 if (state.isRadiationSafetyViolated()) {
                     Notification.show("⚠️ Radiation Safety Violated!", 3_000, Position.TOP_END);
                 }
             }
 
-            // Update verification log list
             List<String> newLogs = service.getVerificationLog();
             
-            // Only update if we have new logs and we're not navigating history
             if (!newLogs.equals(allLogs)) {
                 allLogs.clear();
                 allLogs.addAll(newLogs);
                 
-                // Only update the current index to latest if we're not navigating history
                 if (!isNavigatingHistory && !showAllLogs) {
                     currentLogIndex = Math.max(0, allLogs.size() - 1);
                     updateLogDisplay();
                 }
             }
             
-            // Reset the navigation flag after processing
             isNavigatingHistory = false;
 
-            // Show notification for violation attempts only once (and only in safe mode)
             if (!service.isDangerousMode()) {
                 service.getVerificationLog().forEach(log -> {
                     if (log.contains("Violation Attempt") && !shownViolations.contains(log)) {
