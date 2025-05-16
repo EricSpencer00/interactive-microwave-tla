@@ -32,71 +32,59 @@ public class TlcIntegrationService {
     public void generateSpecFile() throws IOException {
         List<String> verificationLog = verificationLogService.getVerificationLog();
         
+        // Start with the module header
+        StringBuilder specBuilder = new StringBuilder();
+        specBuilder.append("---- MODULE Microwave ----\n")
+                   .append("EXTENDS Integers, TLC\n\n")
+                   .append("VARIABLES door, time, radiation, power\n\n")
+                   .append("CONSTANTS OPEN, CLOSED, ON, OFF\n\n")
+                   .append("Init ==\n")
+                   .append("/\\ door = CLOSED\n")
+                   .append("/\\ time = 0\n")
+                   .append("/\\ radiation = OFF\n")
+                   .append("/\\ power = OFF\n\n")
+                   .append("TogglePower ==\n")
+                   .append("/\\ UNCHANGED <<door, time, radiation>>\n")
+                   .append("/\\ power' = IF power = ON THEN OFF ELSE ON\n\n")
+                   .append("IncrementTime ==\n")
+                   .append("/\\ UNCHANGED <<door, radiation, power>>\n")
+                   .append("/\\ time' = time + 3\n\n")
+                   .append("Start ==\n")
+                   .append("/\\ time > 0\n")
+                   .append("/\\ radiation' = ON\n")
+                   .append("/\\ UNCHANGED <<door, time, power>>\n\n")
+                   .append("Tick ==\n")
+                   .append("/\\ time > 0\n")
+                   .append("/\\ time' = time - 1\n")
+                   .append("/\\ UNCHANGED <<door, power>>\n")
+                   .append("/\\ radiation' = IF time' = 0 THEN OFF ELSE radiation\n\n")
+                   .append("Cancel ==\n")
+                   .append("/\\ time' = 0\n")
+                   .append("/\\ radiation' = OFF\n")
+                   .append("/\\ UNCHANGED <<door, power>>\n\n")
+                   .append("CloseDoor ==\n")
+                   .append("/\\ door = OPEN\n")
+                   .append("/\\ door' = CLOSED\n")
+                   .append("/\\ UNCHANGED <<time, radiation, power>>\n\n")
+                   .append("OpenDoor ==\n")
+                   .append("/\\ door = CLOSED\n")
+                   .append("/\\ door' = OPEN\n")
+                   .append("/\\ radiation' = OFF\n")
+                   .append("/\\ UNCHANGED <<time, power>>\n\n")
+                   .append("Next == TogglePower \\/ IncrementTime \\/ Start \\/ Tick \\/ Cancel \\/ CloseDoor \\/ OpenDoor\n\n")
+                   .append("Safe == ~(radiation = ON /\\ door = OPEN)\n\n")
+                   .append("Spec == Init /\\ [][Next]_<<door,time,radiation,power>>\n\n");
+        
         if (verificationLog.isEmpty()) {
-            // If no log exists, generate a default spec
-            String spec =
-                "---- MODULE Microwave ----\n" +
-                "EXTENDS Integers, TLC\n\n" +
-                "VARIABLES door, time, radiation, power\n\n" +
-                "CONSTANTS OPEN, CLOSED, ON, OFF\n\n" +
-                "Init ==\n" +
-                "/\\ door = CLOSED\n" +
-                "/\\ time = 0\n" +
-                "/\\ radiation = OFF\n" +
-                "/\\ power = OFF\n\n" +
-                "TogglePower ==\n" +
-                "/\\ UNCHANGED <<door, time, radiation>>\n" +
-                "/\\ power' = IF power = ON THEN OFF ELSE ON\n\n" +
-                "IncrementTime ==\n" +
-                "/\\ UNCHANGED <<door, radiation, power>>\n" +
-                "/\\ time' = time + 3\n\n" +
-                "Start ==\n" +
-                "/\\ time > 0\n" +
-                "/\\ radiation' = ON\n" +
-                "/\\ UNCHANGED <<door, time, power>>\n\n" +
-                "Tick ==\n" +
-                "/\\ time > 0\n" +
-                "/\\ time' = time - 1\n" +
-                "/\\ UNCHANGED <<door, power>>\n" +
-                "/\\ radiation' = IF time' = 0 THEN OFF ELSE radiation\n\n" +
-                "Cancel ==\n" +
-                "/\\ time' = 0\n" +
-                "/\\ radiation' = OFF\n" +
-                "/\\ UNCHANGED <<door, power>>\n\n" +
-                "CloseDoor ==\n" +
-                "/\\ door = OPEN\n" +
-                "/\\ door' = CLOSED\n" +
-                "/\\ UNCHANGED <<time, radiation, power>>\n\n" +
-                "OpenDoor ==\n" +
-                "/\\ door = CLOSED\n" +
-                "/\\ door' = OPEN\n" +
-                "/\\ radiation' = OFF\n" +
-                "/\\ UNCHANGED <<time, power>>\n\n" +
-                "Next == TogglePower \\/ IncrementTime \\/ Start \\/ Tick \\/ Cancel \\/ CloseDoor \\/ OpenDoor\n\n" +
-                "Safe == ~(radiation = ON /\\ door = OPEN)\n\n" +
-                "Spec == Init /\\ [][Next]_<<door,time,radiation,power>>\n\n" +
-                "====\n";
+            // If no log exists, just end the file
+            specBuilder.append("====\n");
             Path specPath = Paths.get(System.getProperty("user.dir"), SPEC_FILENAME);
-            Files.writeString(specPath, spec);
+            Files.writeString(specPath, specBuilder.toString());
             return;
         }
         
-        // Extract the TLA+ specification prefix (up to the first state log)
-        StringBuilder specBuilder = new StringBuilder();
-        boolean foundFirstState = false;
-        
-        for (String logEntry : verificationLog) {
-            if (!foundFirstState && logEntry.contains("(* State:")) {
-                foundFirstState = true;
-            }
-            
-            if (!foundFirstState) {
-                specBuilder.append(logEntry);
-            }
-        }
-        
         // Add the states as a trace
-        specBuilder.append("\n(* Trace of states from execution *)\n");
+        specBuilder.append("(* Trace of states from execution *)\n");
         specBuilder.append("Trace ==\n");
         
         List<String> stateEntries = verificationLog.stream()
@@ -144,8 +132,8 @@ public class TlcIntegrationService {
             "  CLOSED = \"CLOSED\"\n" +
             "  ON = \"ON\"\n" +
             "  OFF = \"OFF\"\n" +
-            "MAX_STATES 1000\n" +
-            "MAX_TRACE_LENGTH 100\n";
+            "MAX_STATES = 1000\n" +
+            "MAX_TRACE_LENGTH = 100\n";
         Path cfgPath = Paths.get(System.getProperty("user.dir"), CFG_FILENAME);
         Files.writeString(cfgPath, cfg);
     }

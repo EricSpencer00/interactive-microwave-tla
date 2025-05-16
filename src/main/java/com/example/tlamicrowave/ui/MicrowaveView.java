@@ -176,9 +176,13 @@ public class MicrowaveView extends VerticalLayout {
                     Notification.show("✔ Invariant holds!", 3_000, Position.TOP_END);
                     verificationPanel.setText("Invariant holds! No violations found.");
                 } else {
-                    Notification.show("❌ Violation detected", 3_000, Position.TOP_END);
+                    Notification.show("❌ Safety violation detected", 3_000, Position.TOP_END);
                     StringBuilder sb = new StringBuilder();
-                    sb.append("Violation detected!\n\n");
+                    sb.append("SAFETY VIOLATION DETECTED!\n\n");
+                    
+                    // Always display a clear explanation of the violation
+                    sb.append("The safety property 'Safe == ~(radiation = ON /\\ door = OPEN)' was violated.\n");
+                    sb.append("This means the microwave had radiation ON while the door was OPEN.\n\n");
                     
                     if (result.traceStates != null && !result.traceStates.isEmpty()) {
                         sb.append("Violation Trace:\n\n");
@@ -188,6 +192,10 @@ public class MicrowaveView extends VerticalLayout {
                                 sb.append("  ").append(k).append(" = ").append(v).append("\n"));
                             sb.append("\n");
                         }
+                    } else if (result.rawOutput.contains("TLC found states with the invariant violated")) {
+                        sb.append("TLC found states where radiation was ON with the door OPEN.\n\n");
+                        sb.append("Raw TLC Output:\n\n");
+                        sb.append(result.rawOutput);
                     } else {
                         sb.append("Raw TLC Output:\n\n");
                         sb.append(result.rawOutput);
