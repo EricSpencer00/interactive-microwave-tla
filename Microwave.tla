@@ -40,4 +40,5 @@ Safe == ~(radiation = "ON" /\ door = "OPEN")
 
 Spec == Init /\ [][Next]_<<door,time,radiation,power>>
 
-THEOREM Spec => []Safe 
+THEOREM Spec => []Safe
+==== 

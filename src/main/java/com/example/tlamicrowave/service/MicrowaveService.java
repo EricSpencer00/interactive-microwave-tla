@@ -10,6 +10,7 @@ import org.slf4j.LoggerFactory;
 import java.util.ArrayList;
 import java.util.List;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
@@ -20,6 +21,9 @@ public class MicrowaveService {
     private final List<String> verificationLog = new ArrayList<>();
     private UI ui;
 
+    @Value("${microwave.tick-interval:1000}")
+    private long tickInterval;
+
     @Autowired
     private TlcIntegrationService tlcService;
 
@@ -29,6 +33,8 @@ public class MicrowaveService {
 
     @Scheduled(fixedRate=1000)
     public void tick() {
+        log.debug("Tick method called - Power: {}, Radiation: {}, Time: {}", 
+            state.getPower(), state.getRadiation(), state.getTimeRemaining());
         if (state.getPower()==MicrowaveState.PowerState.ON && state.getRadiation()==MicrowaveState.RadiationState.ON) {
             state.tick();
             logState("Tick");
@@ -103,7 +109,10 @@ public class MicrowaveService {
 
     public MicrowaveState getState() { return state; }
 
-    @Scheduled(fixedRate = 1000)
+    public TlcIntegrationService.TlcResult getLastTlcResult() {
+        return lastTlcResult;
+    }
+
     public void verifyWithTlc() {
         try {
             tlcService.generateSpecFile();
@@ -112,9 +121,5 @@ public class MicrowaveService {
         } catch (Exception e) {
             log.error("TLC integration failed", e);
         }
-    }
-
-    public TlcIntegrationService.TlcResult getLastTlcResult() {
-        return lastTlcResult;
     }
 }
