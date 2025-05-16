@@ -146,14 +146,13 @@ public class TlcIntegrationService {
         Path specPath = Paths.get(System.getProperty("user.dir"), SPEC_FILENAME);
         Path cfgPath = Paths.get(System.getProperty("user.dir"), CFG_FILENAME);
         
-        // Generate files if they don't exist
-        if (!Files.exists(specPath)) {
-            generateSpecFile();
-        }
+        // Delete existing files first to ensure we don't have stale data
+        Files.deleteIfExists(specPath);
+        Files.deleteIfExists(cfgPath);
         
-        if (!Files.exists(cfgPath)) {
-            generateConfigFile();
-        }
+        // Generate fresh files
+        generateSpecFile();
+        generateConfigFile();
 
         // Now run TLC
         List<String> command = new ArrayList<>();

@@ -247,8 +247,6 @@ public class MicrowaveService {
 
     public void verifyWithTlc() {
         try {
-            tlcService.generateSpecFile();
-            tlcService.generateConfigFile();
             lastTlcResult = tlcService.runTlc();
         } catch (Exception e) {
             log.error("TLC integration failed", e);
