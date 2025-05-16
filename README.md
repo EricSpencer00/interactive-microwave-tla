@@ -67,6 +67,26 @@ The application includes a feature toggle panel on the left side that allows you
 
 These toggles allow you to experiment with different microwave behaviors and TLA+ specifications.
 
+## TLA+ Guide
+
+The application includes a TLA+ Guide panel accessible from the left sidebar tabs. This guide provides:
+
+1. **Tutorial Tab**:
+   - Introduction to the microwave simulator
+   - How to use the microwave controls
+   - Explanation of feature toggles
+   - Description of safety properties
+   - Suggestions for experiments to try
+
+2. **TLA+ Cheatsheet Tab**:
+   - Basic TLA+ syntax reference
+   - Common operators and their usage
+   - State predicates and specifications
+   - Microwave-specific TLA+ examples
+   - TLC commands for verification
+
+This guide is especially useful for those new to TLA+ or formal verification concepts.
+
 ## State Machine Properties
 
 ### State Variables

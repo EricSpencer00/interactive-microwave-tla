@@ -28,6 +28,8 @@ import org.slf4j.LoggerFactory;
 import java.util.Arrays;
 import com.vaadin.flow.component.Component;
 import com.vaadin.flow.component.orderedlayout.FlexLayout;
+import com.vaadin.flow.component.tabs.Tab;
+import com.vaadin.flow.component.tabs.Tabs;
 
 @Route("")
 @PermitAll
@@ -50,6 +52,8 @@ public class MicrowaveView extends VerticalLayout {
     private final HorizontalLayout logNavigation;
     private static final Logger log = LoggerFactory.getLogger(MicrowaveView.class);
     private Button powerButton;
+    private Tabs leftPanelTabs;
+    private Div leftPanelContent;
 
     @Autowired
     public MicrowaveView(MicrowaveService service, VerificationLogService logService) {
@@ -66,7 +70,8 @@ public class MicrowaveView extends VerticalLayout {
         FlexLayout mainLayout = new FlexLayout();
         mainLayout.setSizeFull();
         
-        FeatureTogglesPanel featureToggles = new FeatureTogglesPanel(service);
+        // Create left panel with tabs
+        VerticalLayout leftPanel = createLeftPanel();
         
         VerticalLayout microwaveContent = new VerticalLayout();
         microwaveContent.setSizeFull();
@@ -289,7 +294,7 @@ public class MicrowaveView extends VerticalLayout {
             verificationPanel.getStyle().set("min-height", showAllLogs ? "400px" : "100px");
         });
 
-        mainLayout.add(featureToggles);
+        mainLayout.add(leftPanel);
         mainLayout.add(microwaveContent);
         mainLayout.setFlexGrow(1, microwaveContent);
         
@@ -392,5 +397,58 @@ public class MicrowaveView extends VerticalLayout {
                 });
             }
         });
+    }
+    
+    /**
+     * Creates the left panel with tabs for Feature Toggles and TLA+ Cheatsheet
+     */
+    private VerticalLayout createLeftPanel() {
+        VerticalLayout leftPanel = new VerticalLayout();
+        leftPanel.setPadding(false);
+        leftPanel.setSpacing(false);
+        leftPanel.setWidth("350px");
+        leftPanel.getStyle()
+            .set("border-right", "1px solid #dee2e6")
+            .set("height", "100%")
+            .set("overflow-y", "auto");
+        
+        // Create tab components
+        Tab featuresTab = new Tab("Features");
+        Tab guideTab = new Tab("TLA+ Guide");
+        
+        // Create tabs and set full width
+        leftPanelTabs = new Tabs(featuresTab, guideTab);
+        leftPanelTabs.setWidthFull();
+        
+        // Create content container
+        leftPanelContent = new Div();
+        leftPanelContent.setWidthFull();
+        leftPanelContent.getStyle().set("height", "100%");
+        
+        // Create the content components
+        FeatureTogglesPanel featureToggles = new FeatureTogglesPanel(service);
+        TlaCheatsheetPanel tlaCheatsheet = new TlaCheatsheetPanel();
+        
+        // Initially show the features panel
+        featureToggles.setVisible(true);
+        tlaCheatsheet.setVisible(false);
+        
+        leftPanelContent.add(featureToggles, tlaCheatsheet);
+        
+        // Add tab change listener
+        leftPanelTabs.addSelectedChangeListener(event -> {
+            // Hide all content
+            leftPanelContent.getChildren().forEach(component -> component.setVisible(false));
+            
+            // Show the selected content
+            if (event.getSelectedTab().equals(featuresTab)) {
+                featureToggles.setVisible(true);
+            } else {
+                tlaCheatsheet.setVisible(true);
+            }
+        });
+        
+        leftPanel.add(leftPanelTabs, leftPanelContent);
+        return leftPanel;
     }
 }
