@@ -41,6 +41,7 @@ public class MicrowaveView extends VerticalLayout {
     private int currentLogIndex = 0;
     private static final int LOGS_PER_PAGE = 1;
     private boolean showAllLogs = false;
+    private boolean isNavigatingHistory = false;
     private Button showAllButton;
     private final HorizontalLayout logNavigation;
     private static final Logger log = LoggerFactory.getLogger(MicrowaveView.class);
@@ -142,15 +143,22 @@ public class MicrowaveView extends VerticalLayout {
         logNavigation = new HorizontalLayout();
         Button prevButton = new Button("Previous", e -> {
             if (currentLogIndex > 0) {
+                isNavigatingHistory = true;
                 currentLogIndex--;
                 updateLogDisplay();
             }
         });
         Button nextButton = new Button("Next", e -> {
             if (currentLogIndex < allLogs.size() - 1) {
+                isNavigatingHistory = true;
                 currentLogIndex++;
                 updateLogDisplay();
             }
+        });
+        Button latestButton = new Button("Latest", e -> {
+            isNavigatingHistory = false;
+            currentLogIndex = Math.max(0, allLogs.size() - 1);
+            updateLogDisplay();
         });
         showAllButton = new Button("Show All", e -> {
             showAllLogs = !showAllLogs;
@@ -193,7 +201,7 @@ public class MicrowaveView extends VerticalLayout {
                 verificationPanel.setText("Error running TLC:\n\n" + ex.getMessage());
             }
         });
-        logNavigation.add(prevButton, nextButton, showAllButton, verifyBtn);
+        logNavigation.add(prevButton, nextButton, latestButton, showAllButton, verifyBtn);
         logNavigation.setSpacing(true);
 
         // Update bounding box when show all button is clicked
@@ -278,14 +286,23 @@ public class MicrowaveView extends VerticalLayout {
                 }
             }
 
-            // Update verification log
-            allLogs.clear();
-            allLogs.addAll(service.getVerificationLog());
-            // Always show the latest state when not in "Show All" mode
-            if (!showAllLogs) {
-                currentLogIndex = Math.max(0, allLogs.size() - 1);
+            // Update verification log list
+            List<String> newLogs = service.getVerificationLog();
+            
+            // Only update if we have new logs and we're not navigating history
+            if (!newLogs.equals(allLogs)) {
+                allLogs.clear();
+                allLogs.addAll(newLogs);
+                
+                // Only update the current index to latest if we're not navigating history
+                if (!isNavigatingHistory && !showAllLogs) {
+                    currentLogIndex = Math.max(0, allLogs.size() - 1);
+                    updateLogDisplay();
+                }
             }
-            updateLogDisplay();
+            
+            // Reset the navigation flag after processing
+            isNavigatingHistory = false;
 
             // Show notification for violation attempts only once (and only in safe mode)
             if (!service.isDangerousMode()) {

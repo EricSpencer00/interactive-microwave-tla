@@ -61,8 +61,26 @@ public class MicrowaveService {
     }
     
     public void start() { 
-        applyAction("Start", state::start, state::canStart, "radiation = ON"); 
-        lastLoggedState = state.clone();
+        if (dangerousMode) {
+            // In dangerous mode, we allow starting even with door open
+            // but power must still be ON
+            if (state.getPower() == MicrowaveState.PowerState.ON) {
+                state.forceDangerousState(
+                    state.getDoor(),
+                    MicrowaveState.RadiationState.ON,
+                    state.getTimeRemaining(),
+                    state.getPower()
+                );
+                logState("Start (Dangerous)");
+                lastLoggedState = state.clone();
+            } else {
+                verificationLogService.addLogEntry("Start (Power Off) - Cannot turn on radiation without power");
+                pushUpdate();
+            }
+        } else {
+            applyAction("Start", state::start, state::canStart, "radiation = ON"); 
+            lastLoggedState = state.clone();
+        }
     }
     
     public void cancel() { 
@@ -71,23 +89,76 @@ public class MicrowaveService {
     }
     
     public void toggleDoor() { 
-        applyAction(
-            state.getDoor()==MicrowaveState.DoorState.OPEN ? "CloseDoor" : "OpenDoor",
-            ()->{ 
-                if(state.getDoor()==MicrowaveState.DoorState.OPEN) 
-                    state.closeDoor(); 
-                else 
-                    state.openDoor(); 
-            },
-            ()->true, 
-            "door toggled"
-        );
-        lastLoggedState = state.clone();
+        if (dangerousMode) {
+            // In dangerous mode, toggling the door doesn't turn off radiation
+            if (state.getDoor() == MicrowaveState.DoorState.OPEN) {
+                state.forceDangerousState(
+                    MicrowaveState.DoorState.CLOSED,
+                    state.getRadiation(),
+                    state.getTimeRemaining(),
+                    state.getPower()
+                );
+                logState("CloseDoor (Dangerous)");
+            } else {
+                state.forceDangerousState(
+                    MicrowaveState.DoorState.OPEN,
+                    state.getRadiation(), // Keep radiation as is
+                    state.getTimeRemaining(),
+                    state.getPower()
+                );
+                logState("OpenDoor (Dangerous)");
+            }
+            lastLoggedState = state.clone();
+        } else {
+            applyAction(
+                state.getDoor()==MicrowaveState.DoorState.OPEN ? "CloseDoor" : "OpenDoor",
+                ()->{ 
+                    if(state.getDoor()==MicrowaveState.DoorState.OPEN) 
+                        state.closeDoor(); 
+                    else 
+                        state.openDoor(); 
+                },
+                ()->true, 
+                "door toggled"
+            );
+            lastLoggedState = state.clone();
+        }
     }
     
     public void togglePower() { 
-        applyAction("TogglePower", state::togglePower, ()->true, "power toggled"); 
-        lastLoggedState = state.clone();
+        if (dangerousMode) {
+            // In dangerous mode, turning power off still turns radiation off
+            if (state.getPower() == MicrowaveState.PowerState.ON) {
+                state.forceDangerousState(
+                    state.getDoor(),
+                    state.getRadiation(),
+                    state.getTimeRemaining(),
+                    MicrowaveState.PowerState.OFF
+                );
+                // Turn off radiation when power goes off
+                if (state.getRadiation() == MicrowaveState.RadiationState.ON) {
+                    state.forceDangerousState(
+                        state.getDoor(),
+                        MicrowaveState.RadiationState.OFF,
+                        state.getTimeRemaining(),
+                        MicrowaveState.PowerState.OFF
+                    );
+                }
+                logState("TogglePower (Dangerous)");
+            } else {
+                state.forceDangerousState(
+                    state.getDoor(),
+                    state.getRadiation(),
+                    state.getTimeRemaining(),
+                    MicrowaveState.PowerState.ON
+                );
+                logState("TogglePower (Dangerous)");
+            }
+            lastLoggedState = state.clone();
+        } else {
+            applyAction("TogglePower", state::togglePower, ()->true, "power toggled"); 
+            lastLoggedState = state.clone();
+        }
     }
 
     private void applyAction(String name, Runnable action, java.util.function.BooleanSupplier guard, String detail) {
