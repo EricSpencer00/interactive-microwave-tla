@@ -77,16 +77,11 @@ Trace ==
      /\ power = ON
 
   \/ /\ door = CLOSED
-     /\ time = 2
-     /\ radiation = ON
+     /\ time = 0
+     /\ radiation = OFF
      /\ power = ON
 
-  \/ /\ door = CLOSED
-     /\ time = 1
-     /\ radiation = ON
-     /\ power = ON
-
-  \/ /\ door = CLOSED
+  \/ /\ door = OPEN
      /\ time = 0
      /\ radiation = OFF
      /\ power = ON

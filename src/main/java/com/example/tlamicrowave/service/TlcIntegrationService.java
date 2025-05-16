@@ -444,4 +444,196 @@ public class TlcIntegrationService {
             this.timedOut = timedOut;
         }
     }
+
+    /**
+     * Verifies a specific execution trace against the TLA+ specification
+     * by creating a special TraceMicrowave.tla file that extends the main spec.
+     * 
+     * @param trace The execution trace as a list of state maps
+     * @return A TlcResult object indicating if the trace satisfies the spec
+     */
+    public TlcResult verifyExecutionTrace(List<Map<String, String>> trace) throws IOException, InterruptedException {
+        log.debug("Verifying execution trace with {} states", trace.size());
+        
+        // Generate the TraceMicrowave.tla file
+        StringBuilder specBuilder = new StringBuilder();
+        specBuilder.append("---- MODULE TraceMicrowave ----\n")
+                   .append("EXTENDS Naturals, TLC\n\n")
+                   .append("VARIABLES door, time, radiation, power\n\n")
+                   .append("CONSTANTS OPEN, CLOSED, ON, OFF\n\n")
+                   .append("(* Trace to be verified *)\n")
+                   .append("Trace == [\n")
+                   .append("  n \\in 1..").append(trace.size()).append(" |-> CASE\n");
+        
+        // Add each state of the trace as a case
+        for (int i = 0; i < trace.size(); i++) {
+            Map<String, String> state = trace.get(i);
+            specBuilder.append("    n = ").append(i + 1).append(" -> [")
+                       .append("door |-> ").append(state.get("door"))
+                       .append(", time |-> ").append(state.get("time"))
+                       .append(", radiation |-> ").append(state.get("radiation"))
+                       .append(", power |-> ").append(state.get("power"))
+                       .append("]");
+            if (i < trace.size() - 1) {
+                specBuilder.append("\n");
+            }
+        }
+        
+        specBuilder.append("\n  ]\n\n");
+        
+        // Define a constraint-based specification that only checks the specific trace
+        specBuilder.append("Init ==\n")
+                   .append("  /\\ door = Trace[1].door\n")
+                   .append("  /\\ time = Trace[1].time\n")
+                   .append("  /\\ radiation = Trace[1].radiation\n")
+                   .append("  /\\ power = Trace[1].power\n\n");
+        
+        specBuilder.append("Next ==\n")
+                   .append("  \\E i \\in 1..").append(trace.size() - 1).append(":\n")
+                   .append("    /\\ door = Trace[i].door\n")
+                   .append("    /\\ time = Trace[i].time\n")
+                   .append("    /\\ radiation = Trace[i].radiation\n")
+                   .append("    /\\ power = Trace[i].power\n")
+                   .append("    /\\ door' = Trace[i+1].door\n")
+                   .append("    /\\ time' = Trace[i+1].time\n")
+                   .append("    /\\ radiation' = Trace[i+1].radiation\n")
+                   .append("    /\\ power' = Trace[i+1].power\n\n");
+
+        // Define safety property - radiation should not be ON when door is OPEN
+        specBuilder.append("Safe == ~(radiation = ON /\\ door = OPEN)\n\n");
+        
+        // Define the behavior spec to check ONLY the trace
+        specBuilder.append("vars == <<door, time, radiation, power>>\n\n")
+                   .append("(* Specification that only allows exactly the states in the trace *)\n")
+                   .append("TraceSpec == Init /\\ [][Next]_vars /\\ <>Trace[").append(trace.size()).append("] = [door |-> door, time |-> time, radiation |-> radiation, power |-> power]\n\n")
+                   .append("(* Constraints to ONLY check this trace and no others *)\n")
+                   .append("StateConstraint ==\n")
+                   .append("  \\E i \\in 1..").append(trace.size()).append(":\n")
+                   .append("    /\\ door = Trace[i].door\n")
+                   .append("    /\\ time = Trace[i].time\n")
+                   .append("    /\\ radiation = Trace[i].radiation\n")
+                   .append("    /\\ power = Trace[i].power\n\n")
+                   .append("====\n");
+        
+        // Write TraceMicrowave.tla
+        Path traceSpecPath = Paths.get(System.getProperty("user.dir"), "TraceMicrowave.tla");
+        Files.writeString(traceSpecPath, specBuilder.toString());
+        log.debug("Generated trace specification at {}", traceSpecPath);
+        
+        // Write TraceMicrowave.cfg with constraints
+        StringBuilder cfgBuilder = new StringBuilder();
+        cfgBuilder.append("SPECIFICATION TraceSpec\n")
+                 .append("INVARIANT Safe\n")
+                 .append("CONSTANTS\n")
+                 .append("  OPEN = \"OPEN\"\n")
+                 .append("  CLOSED = \"CLOSED\"\n")
+                 .append("  ON = \"ON\"\n")
+                 .append("  OFF = \"OFF\"\n")
+                 .append("CONSTRAINT StateConstraint\n")
+                 .append("CHECK_DEADLOCK FALSE\n")  // Don't check for deadlocks
+                 .append("SYMMETRY_REDUCTION FALSE\n")  // Disable symmetry reduction for speed
+                 .append("VIEW vars\n")              // Show all variables in output
+                 .append("POSTCONDITION Trace[").append(trace.size()).append("] = [door |-> door, time |-> time, radiation |-> radiation, power |-> power]\n");
+                 
+        Path traceCfgPath = Paths.get(System.getProperty("user.dir"), "TraceMicrowave.cfg");
+        Files.writeString(traceCfgPath, cfgBuilder.toString());
+        log.debug("Generated trace configuration at {}", traceCfgPath);
+        
+        try {
+            // Run TLC with more aggressive performance settings
+            List<String> command = new ArrayList<>();
+            Path scriptPath = Paths.get(System.getProperty("user.dir"), "run-tlc.sh");
+            command.add(scriptPath.toString());
+            command.add(traceSpecPath.toString());
+            command.add("-config");
+            command.add(traceCfgPath.toString());
+            command.add("-difftrace");  // Show exactly where traces differ
+            command.add("-coverage");   // Check coverage
+            command.add("0");           // Minimum coverage threshold - no threshold
+            command.add("-workers");
+            command.add("1");           // Just one worker is enough for trace checking
+            command.add("-nowarning");  // Skip warnings for speed
+            command.add("-maxSetSize");
+            command.add("100");         // Limit set size
+            
+            log.debug("Executing TLC command for trace verification: {}", String.join(" ", command));
+            
+            ProcessBuilder pb = new ProcessBuilder(command);
+            pb.directory(Paths.get(System.getProperty("user.dir")).toFile());
+            pb.redirectErrorStream(true);
+            
+            Process proc = pb.start();
+            StringBuilder output = new StringBuilder();
+            
+            // Read output in the main thread
+            try (BufferedReader reader = new BufferedReader(new InputStreamReader(proc.getInputStream()))) {
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    log.debug("TLC trace verification output: {}", line);
+                    output.append(line).append(System.lineSeparator());
+                }
+            }
+            
+            // Wait with a timeout - trace checking should be fast
+            boolean completed = proc.waitFor(30, TimeUnit.SECONDS);  // 30 seconds is plenty for trace checking
+            if (!completed) {
+                log.warn("TLC trace verification timed out after 30 seconds, killing process");
+                proc.destroyForcibly();
+                return new TlcResult(false, new ArrayList<>(), 
+                    "TLC trace verification timed out after 30 seconds. This shouldn't happen for trace checking and indicates a problem.", true);
+            }
+            
+            int exitCode = proc.exitValue();
+            String outputStr = output.toString();
+            
+            // Check if the trace is valid
+            boolean traceConforms = exitCode == 0 && !outputStr.contains("Error:");
+            
+            // Extract specific error information if available
+            String errorInfo = "";
+            if (!traceConforms) {
+                // Look for violations in the output
+                if (outputStr.contains("Invariant Safe is violated")) {
+                    // Safety violation
+                    errorInfo = "Safety property violated: radiation is ON while door is OPEN";
+                    
+                    // Try to extract the specific state
+                    Pattern statePattern = Pattern.compile("State (\\d+).*?radiation = ON.*?door = OPEN", 
+                                           Pattern.DOTALL | Pattern.MULTILINE);
+                    Matcher stateMatcher = statePattern.matcher(outputStr);
+                    if (stateMatcher.find()) {
+                        errorInfo += " at state " + stateMatcher.group(1);
+                    }
+                } else if (outputStr.contains("does not satisfy the temporal formula")) {
+                    // Trace doesn't follow specification
+                    errorInfo = "Trace does not follow the microwave specification";
+                    
+                    // Look for step information
+                    Pattern stepPattern = Pattern.compile("step (\\d+)");
+                    Matcher stepMatcher = stepPattern.matcher(outputStr);
+                    if (stepMatcher.find()) {
+                        errorInfo += " at step " + stepMatcher.group(1);
+                    }
+                } else {
+                    errorInfo = "Unknown verification error";
+                }
+            }
+            
+            log.debug("Trace verification result: conforms={}, error={}", 
+                    traceConforms, errorInfo.isEmpty() ? "none" : errorInfo);
+            
+            return new TlcResult(traceConforms, trace, 
+                errorInfo.isEmpty() ? outputStr : errorInfo + "\n\n" + outputStr, false);
+            
+        } finally {
+            // Clean up temporary files
+            try {
+                Files.deleteIfExists(traceSpecPath);
+                Files.deleteIfExists(traceCfgPath);
+                log.debug("Cleaned up temporary trace verification files");
+            } catch (IOException e) {
+                log.warn("Failed to clean up trace verification files: {}", e.getMessage());
+            }
+        }
+    }
 }

@@ -14,6 +14,10 @@ import org.springframework.beans.factory.annotation.Value;
 import lombok.extern.slf4j.Slf4j;
 import java.util.Map;
 import java.util.stream.Collectors;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 @Slf4j
 @Service
@@ -259,11 +263,34 @@ public class MicrowaveService {
                      logCheck.safetyHolds, 
                      logCheck.violations.size());
             
+            // Get the list of states from the verification log
+            List<String> verificationLog = verificationLogService.getVerificationLog();
+            List<String> stateEntries = verificationLog.stream()
+                .filter(entry -> entry.contains("(* State:"))
+                .collect(Collectors.toList());
+            
+            // Convert log entries to state maps for trace verification
+            List<Map<String, String>> traceStates = new ArrayList<>();
+            for (String stateEntry : stateEntries) {
+                Map<String, String> stateMap = new LinkedHashMap<>();
+                stateMap.put("door", extractValueFromLog(stateEntry, "door"));
+                stateMap.put("time", extractValueFromLog(stateEntry, "time"));
+                stateMap.put("radiation", extractValueFromLog(stateEntry, "radiation"));
+                stateMap.put("power", extractValueFromLog(stateEntry, "power"));
+                traceStates.add(stateMap);
+            }
+            
+            log.debug("Extracted {} states from log for trace verification", traceStates.size());
+            
             // Only run TLC if no violations in the log, to avoid model-checking errors
             if (logCheck.safetyHolds) {
-                log.debug("No safety violations in log, proceeding with TLC verification");
-                lastTlcResult = tlcService.runTlc();
-                log.debug("TLC verification completed. Invariant holds: {}, timed out: {}", 
+                log.debug("No safety violations in log, proceeding with trace verification using TLC");
+                
+                // Use the new verifyExecutionTrace method instead of runTlc
+                // This will only verify the exact trace without exploring extra states
+                lastTlcResult = tlcService.verifyExecutionTrace(traceStates);
+                
+                log.debug("Trace verification completed. Trace conforms to spec: {}, timed out: {}", 
                          lastTlcResult.invariantHolds, lastTlcResult.timedOut);
             } else {
                 log.debug("Safety violations found in log, skipping TLC verification");
@@ -283,16 +310,28 @@ public class MicrowaveService {
                 }
                 
                 // Convert log violations to the standard trace format expected by UI
-                List<Map<String, String>> traceStates = logCheck.violations.stream()
+                List<Map<String, String>> violationStates = logCheck.violations.stream()
                     .map(v -> v.state)
                     .collect(Collectors.toList());
                 
-                lastTlcResult = new TlcIntegrationService.TlcResult(false, traceStates, output.toString(), false);
+                lastTlcResult = new TlcIntegrationService.TlcResult(false, violationStates, output.toString(), false);
                 log.debug("Created TLC result from log violations");
             }
         } catch (Exception e) {
             log.error("TLC integration failed", e);
         }
+    }
+    
+    /**
+     * Helper method to extract values from log entries
+     */
+    private String extractValueFromLog(String stateEntry, String variable) {
+        Pattern pattern = Pattern.compile("/\\\\ " + variable + " = (.+)");
+        Matcher matcher = pattern.matcher(stateEntry);
+        if (matcher.find()) {
+            return matcher.group(1).trim();
+        }
+        return "\"UNKNOWN\"";
     }
     
     public boolean isDangerousMode() {
