@@ -26,6 +26,7 @@ import java.util.ArrayList;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import java.util.Arrays;
+import com.vaadin.flow.component.Component;
 
 @Route("")
 @PermitAll
@@ -65,6 +66,22 @@ public class MicrowaveView extends VerticalLayout {
         topBar.setWidthFull();
         topBar.setJustifyContentMode(JustifyContentMode.END);
         
+        // Add title to the top left
+        H2 title = new H2("Interactive TLA Microwave");
+        title.getStyle()
+            .set("margin", "0")
+            .set("font-size", "1.5em")
+            .set("color", "#333")
+            .set("font-weight", "bold");
+        
+        // Create a container for the title and position it at the left
+        Div titleContainer = new Div(title);
+        titleContainer.getStyle()
+            .set("margin-right", "auto") // Pushes everything else to the right
+            .set("padding-left", "20px");
+        
+        topBar.add(titleContainer);
+        
         dangerModeToggle = new Checkbox("⚠️ Dangerous Mode");
         dangerModeToggle.addValueChangeListener(e -> {
             boolean dangerous = e.getValue();
@@ -88,11 +105,27 @@ public class MicrowaveView extends VerticalLayout {
         topBar.add(dangerModeToggle);
         add(topBar);
 
-        // 1) Timer display
+        // 1) Timer display with power indicator
+        HorizontalLayout timerLayout = new HorizontalLayout();
+        timerLayout.setAlignItems(Alignment.CENTER);
+        timerLayout.setSpacing(true);
+        
+        // Create power indicator light
+        Div powerIndicator = new Div();
+        powerIndicator.getStyle()
+            .set("width", "20px")
+            .set("height", "20px")
+            .set("border-radius", "50%")
+            .set("background-color", "#dc3545") // Default red (OFF)
+            .set("margin-right", "5px")
+            .set("border", "2px solid #333");
+            
         timerDisplay = new Div();
         timerDisplay.addClassName("timer-display");
         timerDisplay.getStyle().set("font-size", "1.2em");
-        timerDisplay.getStyle().set("margin-bottom", "1em");
+        
+        timerLayout.add(powerIndicator, timerDisplay);
+        timerLayout.getStyle().set("margin-bottom", "1em");
 
         // 2) Microwave graphic
         graphic = new MicrowaveGraphic();
@@ -288,7 +321,7 @@ public class MicrowaveView extends VerticalLayout {
         });
 
         // assemble
-        add(timerDisplay);
+        add(timerLayout);
         add(graphic);
         add(new H2("TLA+ State Trace"));
         add(verificationPanel);
@@ -339,6 +372,21 @@ public class MicrowaveView extends VerticalLayout {
             graphic.getElement().setProperty("heating", state.getRadiation() == MicrowaveState.RadiationState.ON);
             // graphic.getElement().setProperty("beeping", state.getBeep() == MicrowaveState.BeepState.ON);
             graphic.getElement().setProperty("time", state.getTimeRemaining());
+
+            // Update power indicator color based on power state
+            if (timerDisplay.getParent().isPresent() && timerDisplay.getParent().get() instanceof HorizontalLayout) {
+                HorizontalLayout timerLayout = (HorizontalLayout) timerDisplay.getParent().get();
+                Component powerIndicator = timerLayout.getComponentAt(0);
+                if (powerIndicator instanceof Div) {
+                    if (state.getPower() == MicrowaveState.PowerState.ON) {
+                        // Green when power is ON
+                        ((Div) powerIndicator).getStyle().set("background-color", "#28a745");
+                    } else {
+                        // Red when power is OFF
+                        ((Div) powerIndicator).getStyle().set("background-color", "#dc3545");
+                    }
+                }
+            }
 
             // Update dangerous mode indicator UI
             if (service.isDangerousMode()) {
