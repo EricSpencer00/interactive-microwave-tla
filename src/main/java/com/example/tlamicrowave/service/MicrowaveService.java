@@ -42,7 +42,9 @@ public class MicrowaveService {
 
     @Scheduled(fixedRate=1000)
     public void tick() {
-        if (state.getPower()==MicrowaveState.PowerState.ON && state.getRadiation()==MicrowaveState.RadiationState.ON) {
+        // Only tick if radiation is ON and either power button is disabled or power is ON
+        if (state.getRadiation() == MicrowaveState.RadiationState.ON && 
+            (!powerButtonEnabled || state.getPower() == MicrowaveState.PowerState.ON)) {
             state.tick();
             // Only log state if it changed
             if (hasStateChanged()) {
@@ -61,15 +63,29 @@ public class MicrowaveService {
     }
 
     public void incrementTime() { 
-        applyAction("IncrementTime", state::incrementTime, state::canIncrementTime, "time + 3"); 
-        lastLoggedState = state.clone();
+        if (!powerButtonEnabled) {
+            // When power button is disabled, use the no-power version
+            applyAction("IncrementTime", state::incrementTimeNoPower, 
+                () -> state.canIncrementTimeNoPower(), 
+                "time + 3"); 
+            lastLoggedState = state.clone();
+        } else if (state.getPower() == MicrowaveState.PowerState.ON) {
+            // When power button is enabled and power is ON
+            applyAction("IncrementTime", state::incrementTime, 
+                state::canIncrementTime, 
+                "time + 3"); 
+            lastLoggedState = state.clone();
+        } else {
+            verificationLogService.addLogEntry("IncrementTime Violation Attempt - Power is OFF");
+            pushUpdate();
+        }
     }
     
     public void start() { 
         if (dangerousMode) {
             // In dangerous mode, we allow starting even with door open
-            // but power must still be ON
-            if (state.getPower() == MicrowaveState.PowerState.ON) {
+            // but power must still be ON if power button is enabled
+            if (!powerButtonEnabled || state.getPower() == MicrowaveState.PowerState.ON) {
                 state.forceDangerousState(
                     state.getDoor(),
                     MicrowaveState.RadiationState.ON,
@@ -83,19 +99,40 @@ public class MicrowaveService {
                 pushUpdate();
             }
         } else {
-            // Fix: Add time check to ensure we can start
-            if (state.getTimeRemaining() > 0 && state.getDoor() == MicrowaveState.DoorState.CLOSED) {
-                applyAction("Start", state::start, state::canStart, "radiation = ON");
-                lastLoggedState = state.clone();
+            // Check if we can start based on whether power button is enabled
+            if (!powerButtonEnabled) {
+                // When power button is disabled, use the no-power version
+                if (state.canStartNoPower()) {
+                    applyAction("Start", state::startNoPower, () -> true, "radiation = ON");
+                    lastLoggedState = state.clone();
+                } else {
+                    // Log why we can't start
+                    if (state.getTimeRemaining() <= 0) {
+                        verificationLogService.addLogEntry("Start Violation Attempt - Need to set time first");
+                    }
+                    if (state.getDoor() != MicrowaveState.DoorState.CLOSED) {
+                        verificationLogService.addLogEntry("Start Violation Attempt - Door must be closed");
+                    }
+                    pushUpdate();
+                }
             } else {
-                // Log why we can't start
-                if (state.getTimeRemaining() <= 0) {
-                    verificationLogService.addLogEntry("Start Violation Attempt - Need to set time first");
+                // When power button is enabled, use the standard version
+                if (state.canStart()) {
+                    applyAction("Start", state::start, () -> true, "radiation = ON");
+                    lastLoggedState = state.clone();
+                } else {
+                    // Log why we can't start
+                    if (state.getTimeRemaining() <= 0) {
+                        verificationLogService.addLogEntry("Start Violation Attempt - Need to set time first");
+                    }
+                    if (state.getDoor() != MicrowaveState.DoorState.CLOSED) {
+                        verificationLogService.addLogEntry("Start Violation Attempt - Door must be closed");
+                    }
+                    if (state.getPower() != MicrowaveState.PowerState.ON) {
+                        verificationLogService.addLogEntry("Start Violation Attempt - Power must be ON");
+                    }
+                    pushUpdate();
                 }
-                if (state.getDoor() != MicrowaveState.DoorState.CLOSED) {
-                    verificationLogService.addLogEntry("Start Violation Attempt - Door must be closed");
-                }
-                pushUpdate();
             }
         }
     }
@@ -443,23 +480,15 @@ public class MicrowaveService {
             this.powerButtonEnabled = enabled;
             verificationLogService.addLogEntry("(* Power Button " + (enabled ? "ENABLED" : "DISABLED") + " *)");
             
-            // If disabling power button, ensure power is OFF
+            // If disabling power button, ensure power is OFF but don't turn off radiation
+            // This allows the microwave to continue working without power
             if (!enabled && state.getPower() == MicrowaveState.PowerState.ON) {
                 state.forceDangerousState(
                     state.getDoor(),
-                    state.getRadiation(),
+                    state.getRadiation(), // Keep radiation state as is
                     state.getTimeRemaining(),
                     MicrowaveState.PowerState.OFF
                 );
-                // Also turn off radiation when power goes off
-                if (state.getRadiation() == MicrowaveState.RadiationState.ON) {
-                    state.forceDangerousState(
-                        state.getDoor(),
-                        MicrowaveState.RadiationState.OFF,
-                        state.getTimeRemaining(),
-                        MicrowaveState.PowerState.OFF
-                    );
-                }
                 logState("Power Button Disabled");
             }
             

@@ -20,12 +20,33 @@ public class MicrowaveState {
     private BeepState beep = BeepState.OFF;
     private int timeRemaining = 0;
     private PowerState power = PowerState.OFF;
+    
+    /**
+     * Check if time can be incremented with power consideration
+     */
     public boolean canIncrementTime() {
         return radiation == RadiationState.OFF && timeRemaining < MAX_TIME && power == PowerState.ON;
     }
+    
+    /**
+     * Check if time can be incremented without power consideration
+     */
+    public boolean canIncrementTimeNoPower() {
+        return radiation == RadiationState.OFF && timeRemaining < MAX_TIME;
+    }
 
+    /**
+     * Check if microwave can start with power consideration
+     */
     public boolean canStart() {
         return radiation == RadiationState.OFF && timeRemaining > 0 && door == DoorState.CLOSED && power == PowerState.ON;
+    }
+    
+    /**
+     * Check if microwave can start without power consideration
+     */
+    public boolean canStartNoPower() {
+        return radiation == RadiationState.OFF && timeRemaining > 0 && door == DoorState.CLOSED;
     }
 
     public void incrementTime() {
@@ -36,9 +57,30 @@ public class MicrowaveState {
             }
         }
     }
+    
+    /**
+     * Increment time without checking power state
+     */
+    public void incrementTimeNoPower() {
+        if (canIncrementTimeNoPower()) {
+            timeRemaining += 3;
+            if (timeRemaining > MAX_TIME) {
+                timeRemaining = MAX_TIME;
+            }
+        }
+    }
 
     public void start() {
         if (canStart()) {
+            radiation = RadiationState.ON;
+        }
+    }
+    
+    /**
+     * Start without checking power state
+     */
+    public void startNoPower() {
+        if (canStartNoPower()) {
             radiation = RadiationState.ON;
         }
     }
@@ -82,15 +124,14 @@ public class MicrowaveState {
     public PowerState getPower() { return power; }
 
     public void togglePower() {
-    power = (power == PowerState.OFF ? PowerState.ON : PowerState.OFF);
-    // when powering off, reset other sub-states:
-    if (power == PowerState.OFF) {
-        radiation = RadiationState.OFF;
-        timeRemaining = 0;
-        beep = BeepState.OFF;
+        power = (power == PowerState.OFF ? PowerState.ON : PowerState.OFF);
+        // when powering off, reset other sub-states:
+        if (power == PowerState.OFF) {
+            radiation = RadiationState.OFF;
+            timeRemaining = 0;
+            beep = BeepState.OFF;
+        }
     }
-    }
-
 
     public void manualTick() {
         if (timeRemaining > 0) {
