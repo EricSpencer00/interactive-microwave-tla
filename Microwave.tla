@@ -1,44 +1,59 @@
----- MODULE Microwave ----
-EXTENDS Integers, TLC
 
-VARIABLES door, time, radiation, power
+(* Trace of states from execution *)
+Trace ==
+  /\ door = CLOSED
+     /\ time = 0
+     /\ radiation = OFF
+     /\ power = OFF
 
-Init ==
-/\ door = "CLOSED"
-/\ time = 0
-/\ radiation = "OFF"
-/\ power = "OFF"
+  \/ /\ door = CLOSED
+     /\ time = 0
+     /\ radiation = OFF
+     /\ power = ON
 
-TogglePower ==
-/\ UNCHANGED <<door, time, radiation>>
-/\ power' = IF power = "ON" THEN "OFF" ELSE "ON"
+  \/ /\ door = OPEN
+     /\ time = 0
+     /\ radiation = OFF
+     /\ power = ON
 
-IncrementTime ==
-/\ UNCHANGED <<door, radiation, power>>
-/\ time' = time + 3
+  \/ /\ door = CLOSED
+     /\ time = 0
+     /\ radiation = OFF
+     /\ power = ON
 
-Start ==
-/\ time > 0
-/\ radiation' = "ON"
-/\ UNCHANGED <<door, time, power>>
+  \/ /\ door = CLOSED
+     /\ time = 3
+     /\ radiation = OFF
+     /\ power = ON
 
-Tick ==
-/\ time > 0
-/\ time' = time - 1
-/\ UNCHANGED <<door, power>>
-/\ radiation' = IF time' = 0 THEN "OFF" ELSE radiation
+  \/ /\ door = CLOSED
+     /\ time = 6
+     /\ radiation = OFF
+     /\ power = ON
 
-Cancel ==
-/\ time' = 0
-/\ radiation' = "OFF"
-/\ UNCHANGED <<door, power>>
+  \/ /\ door = CLOSED
+     /\ time = 6
+     /\ radiation = ON
+     /\ power = ON
 
-Next ==
-TogglePower \/ IncrementTime \/ Start \/ Tick \/ Cancel
+  \/ /\ door = CLOSED
+     /\ time = 5
+     /\ radiation = ON
+     /\ power = ON
 
-Safe == ~(radiation = "ON" /\ door = "OPEN")
+  \/ /\ door = CLOSED
+     /\ time = 4
+     /\ radiation = ON
+     /\ power = ON
 
-Spec == Init /\ [][Next]_<<door,time,radiation,power>>
+  \/ /\ door = CLOSED
+     /\ time = 3
+     /\ radiation = ON
+     /\ power = ON
 
-THEOREM Spec => []Safe
-==== 
+  \/ /\ door = OPEN
+     /\ time = 3
+     /\ radiation = OFF
+     /\ power = ON
+
+====

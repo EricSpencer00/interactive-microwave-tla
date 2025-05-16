@@ -117,11 +117,36 @@ public class MicrowaveState {
         return radiation == RadiationState.ON && door == DoorState.OPEN;
     }
 
+    /**
+     * Force a potentially unsafe state when in dangerous mode.
+     * This bypasses normal safety constraints.
+     */
+    public void forceDangerousState(DoorState doorState, RadiationState radiationState, int time, PowerState powerState) {
+        this.door = doorState;
+        this.radiation = radiationState;
+        this.timeRemaining = time;
+        this.power = powerState;
+    }
+
     public BeepState getBeep() {
         return beep;
     }
 
     public void stopBeep() {
         beep = BeepState.OFF;
+    }
+
+    public void setDoor(DoorState door) { this.door = door; }
+    public void setRadiation(RadiationState radiation) { this.radiation = radiation; }
+    public void setPower(PowerState power) { this.power = power; }
+    public void setTimeRemaining(int timeRemaining) { this.timeRemaining = timeRemaining; }
+
+    public MicrowaveState clone() {
+        MicrowaveState clone = new MicrowaveState();
+        clone.door = this.door;
+        clone.radiation = this.radiation;
+        clone.power = this.power;
+        clone.timeRemaining = this.timeRemaining;
+        return clone;
     }
 } 

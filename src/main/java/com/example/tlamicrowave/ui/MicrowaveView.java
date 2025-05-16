@@ -2,8 +2,10 @@ package com.example.tlamicrowave.ui;
 
 import com.example.tlamicrowave.model.MicrowaveState;
 import com.example.tlamicrowave.service.MicrowaveService;
+import com.example.tlamicrowave.service.VerificationLogService;
 import com.vaadin.flow.component.UI;
 import com.vaadin.flow.component.button.Button;
+import com.vaadin.flow.component.checkbox.Checkbox;
 import com.vaadin.flow.component.dependency.JsModule;
 import com.vaadin.flow.component.html.Div;
 import com.vaadin.flow.component.html.H2;
@@ -21,12 +23,15 @@ import java.util.HashSet;
 import java.util.Set;
 import java.util.List;
 import java.util.ArrayList;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @Route("")
 @PermitAll
 @JsModule("./microwave-graphic.ts")
 public class MicrowaveView extends VerticalLayout {
     private final MicrowaveService service;
+    private final VerificationLogService logService;
     private final Div timerDisplay;
     private final Div verificationPanel;
     private final UI ui;
@@ -38,16 +43,47 @@ public class MicrowaveView extends VerticalLayout {
     private boolean showAllLogs = false;
     private Button showAllButton;
     private final HorizontalLayout logNavigation;
+    private static final Logger log = LoggerFactory.getLogger(MicrowaveView.class);
+    private final Checkbox dangerModeToggle;
 
     @Autowired
-    public MicrowaveView(MicrowaveService service) {
+    public MicrowaveView(MicrowaveService service, VerificationLogService logService) {
         this.service = service;
+        this.logService = logService;
         this.ui = UI.getCurrent();
         service.setUI(ui);
 
         setSizeFull();
         setAlignItems(Alignment.CENTER);
         setJustifyContentMode(JustifyContentMode.CENTER);
+        
+        // Create top bar with dangerous mode toggle
+        HorizontalLayout topBar = new HorizontalLayout();
+        topBar.setWidthFull();
+        topBar.setJustifyContentMode(JustifyContentMode.END);
+        
+        dangerModeToggle = new Checkbox("⚠️ Dangerous Mode");
+        dangerModeToggle.addValueChangeListener(e -> {
+            boolean dangerous = e.getValue();
+            service.setDangerousMode(dangerous);
+            if (dangerous) {
+                Notification.show("⚠️ Dangerous Mode Enabled - Safety protections disabled!", 
+                    3000, Position.TOP_CENTER);
+            } else {
+                Notification.show("✅ Safe Mode Enabled - Safety protections active", 
+                    3000, Position.TOP_CENTER);
+            }
+        });
+        
+        dangerModeToggle.getStyle()
+            .set("margin-right", "20px")
+            .set("padding", "8px")
+            .set("background-color", "#fff3cd")
+            .set("border-radius", "4px")
+            .set("border", "1px solid #ffeeba");
+            
+        topBar.add(dangerModeToggle);
+        add(topBar);
 
         // 1) Timer display
         timerDisplay = new Div();
@@ -133,8 +169,10 @@ public class MicrowaveView extends VerticalLayout {
                     verificationPanel.setText("Invariant holds! No violations found.");
                 } else {
                     Notification.show("❌ Violation detected", 3_000, Position.TOP_END);
+                    StringBuilder sb = new StringBuilder();
+                    sb.append("Violation detected!\n\n");
+                    
                     if (result.traceStates != null && !result.traceStates.isEmpty()) {
-                        StringBuilder sb = new StringBuilder();
                         sb.append("Violation Trace:\n\n");
                         for (int i = 0; i < result.traceStates.size(); i++) {
                             sb.append("State ").append(i).append(":\n");
@@ -142,13 +180,15 @@ public class MicrowaveView extends VerticalLayout {
                                 sb.append("  ").append(k).append(" = ").append(v).append("\n"));
                             sb.append("\n");
                         }
-                        verificationPanel.setText(sb.toString());
                     } else {
-                        // If no trace states, show the raw output
-                        verificationPanel.setText("TLC Output:\n\n" + result.rawOutput);
+                        sb.append("Raw TLC Output:\n\n");
+                        sb.append(result.rawOutput);
                     }
+                    
+                    verificationPanel.setText(sb.toString());
                 }
             } catch (Exception ex) {
+                log.error("TLC verification failed", ex);
                 Notification.show("Error running TLC: " + ex.getMessage(), 5_000, Position.TOP_END);
                 verificationPanel.setText("Error running TLC:\n\n" + ex.getMessage());
             }
@@ -214,15 +254,28 @@ public class MicrowaveView extends VerticalLayout {
             // graphic.getElement().setProperty("beeping", state.getBeep() == MicrowaveState.BeepState.ON);
             graphic.getElement().setProperty("time", state.getTimeRemaining());
 
-            // Check safety violations
-            if (state.isDoorSafetyViolated()) {
-                Notification.show("⚠️ Door Safety Violated!", 3_000, Position.TOP_END);
+            // Update dangerous mode indicator UI
+            if (service.isDangerousMode()) {
+                dangerModeToggle.getStyle()
+                    .set("background-color", "#f8d7da")
+                    .set("border", "1px solid #f5c6cb");
+            } else {
+                dangerModeToggle.getStyle()
+                    .set("background-color", "#fff3cd")
+                    .set("border", "1px solid #ffeeba");
             }
-            // if (state.isBeepSafetyViolated()) {
-            //     Notification.show("⚠️ Beep Safety Violated!", 3_000, Position.TOP_END);
-            // }
-            if (state.isRadiationSafetyViolated()) {
-                Notification.show("⚠️ Radiation Safety Violated!", 3_000, Position.TOP_END);
+
+            // Check safety violations - only show in UI if not in dangerous mode
+            if (!service.isDangerousMode()) {
+                if (state.isDoorSafetyViolated()) {
+                    Notification.show("⚠️ Door Safety Violated!", 3_000, Position.TOP_END);
+                }
+                // if (state.isBeepSafetyViolated()) {
+                //     Notification.show("⚠️ Beep Safety Violated!", 3_000, Position.TOP_END);
+                // }
+                if (state.isRadiationSafetyViolated()) {
+                    Notification.show("⚠️ Radiation Safety Violated!", 3_000, Position.TOP_END);
+                }
             }
 
             // Update verification log
@@ -234,13 +287,15 @@ public class MicrowaveView extends VerticalLayout {
             }
             updateLogDisplay();
 
-            // Show notification for violation attempts only once
-            service.getVerificationLog().forEach(log -> {
-                if (log.contains("Violation Attempt") && !shownViolations.contains(log)) {
-                    Notification.show(log, 3_000, Position.TOP_END);
-                    shownViolations.add(log);
-                }
-            });
+            // Show notification for violation attempts only once (and only in safe mode)
+            if (!service.isDangerousMode()) {
+                service.getVerificationLog().forEach(log -> {
+                    if (log.contains("Violation Attempt") && !shownViolations.contains(log)) {
+                        Notification.show(log, 3_000, Position.TOP_END);
+                        shownViolations.add(log);
+                    }
+                });
+            }
         });
     }
 }

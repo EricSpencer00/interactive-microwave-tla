@@ -7,8 +7,8 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import lombok.extern.slf4j.Slf4j;
@@ -18,14 +18,18 @@ import lombok.extern.slf4j.Slf4j;
 public class MicrowaveService {
     private static final Logger log = LoggerFactory.getLogger(MicrowaveService.class);
     private final MicrowaveState state = new MicrowaveState();
-    private final List<String> verificationLog = new ArrayList<>();
     private UI ui;
+    private MicrowaveState lastLoggedState = new MicrowaveState().clone(); // Track last logged state
+    private boolean dangerousMode = false; // Default to safe mode
 
     @Value("${microwave.tick-interval:1000}")
     private long tickInterval;
 
     @Autowired
     private TlcIntegrationService tlcService;
+    
+    @Autowired
+    private VerificationLogService verificationLogService;
 
     private TlcIntegrationService.TlcResult lastTlcResult;
 
@@ -33,35 +37,79 @@ public class MicrowaveService {
 
     @Scheduled(fixedRate=1000)
     public void tick() {
-        log.debug("Tick method called - Power: {}, Radiation: {}, Time: {}", 
-            state.getPower(), state.getRadiation(), state.getTimeRemaining());
         if (state.getPower()==MicrowaveState.PowerState.ON && state.getRadiation()==MicrowaveState.RadiationState.ON) {
             state.tick();
-            logState("Tick");
+            // Only log state if it changed
+            if (hasStateChanged()) {
+                logState("Tick");
+                lastLoggedState = state.clone();
+            }
             pushUpdate();
         }
     }
 
-    public void incrementTime() { applyAction("IncrementTime", state::incrementTime, state::canIncrementTime, "time + 3"); }
-    public void start()         { applyAction("Start",        state::start,         state::canStart,        "radiation = ON"); }
-    public void cancel()        { applyAction("Cancel",       state::cancel,        ()->true,               "time = 0"); }
-    public void toggleDoor()    { applyAction(state.getDoor()==MicrowaveState.DoorState.OPEN?"CloseDoor":"OpenDoor",
-                                                        ()->{ if(state.getDoor()==MicrowaveState.DoorState.OPEN) state.closeDoor(); else state.openDoor(); },
-                                                        ()->true, "door toggled"); }
-    public void togglePower()   { applyAction("TogglePower",  state::togglePower,   ()->true,               "power toggled"); }
+    private boolean hasStateChanged() {
+        return !Objects.equals(state.getDoor(), lastLoggedState.getDoor()) ||
+               !Objects.equals(state.getRadiation(), lastLoggedState.getRadiation()) ||
+               !Objects.equals(state.getPower(), lastLoggedState.getPower()) ||
+               state.getTimeRemaining() != lastLoggedState.getTimeRemaining();
+    }
+
+    public void incrementTime() { 
+        applyAction("IncrementTime", state::incrementTime, state::canIncrementTime, "time + 3"); 
+        lastLoggedState = state.clone();
+    }
+    
+    public void start() { 
+        applyAction("Start", state::start, state::canStart, "radiation = ON"); 
+        lastLoggedState = state.clone();
+    }
+    
+    public void cancel() { 
+        applyAction("Cancel", state::cancel, ()->true, "time = 0"); 
+        lastLoggedState = state.clone();
+    }
+    
+    public void toggleDoor() { 
+        applyAction(
+            state.getDoor()==MicrowaveState.DoorState.OPEN ? "CloseDoor" : "OpenDoor",
+            ()->{ 
+                if(state.getDoor()==MicrowaveState.DoorState.OPEN) 
+                    state.closeDoor(); 
+                else 
+                    state.openDoor(); 
+            },
+            ()->true, 
+            "door toggled"
+        );
+        lastLoggedState = state.clone();
+    }
+    
+    public void togglePower() { 
+        applyAction("TogglePower", state::togglePower, ()->true, "power toggled"); 
+        lastLoggedState = state.clone();
+    }
 
     private void applyAction(String name, Runnable action, java.util.function.BooleanSupplier guard, String detail) {
-        if (guard.getAsBoolean()) { action.run(); logState(name); }
-        else                    { verificationLog.add(name+" Violation Attempt"); }
+        if (dangerousMode || guard.getAsBoolean()) { 
+            action.run(); 
+            logState(name); 
+            if (dangerousMode && !guard.getAsBoolean()) {
+                verificationLogService.addLogEntry(name + " Danger: Safety constraint violated!");
+            }
+        } else { 
+            verificationLogService.addLogEntry(name + " Violation Attempt"); 
+        }
         pushUpdate();
     }
 
     public synchronized void logState(String action) {
         StringBuilder b = new StringBuilder();
-        if (verificationLog.isEmpty()) {
+        if (verificationLogService.isEmpty()) {
             b.append("---- MODULE Microwave ----\n")
              .append("EXTENDS Integers, TLC\n\n")
              .append("VARIABLES door, time, radiation, power\n\n")
+             .append("CONSTANTS OPEN, CLOSED, ON, OFF\n\n")
              .append("Init ==\n")
              .append("/\\ door = CLOSED\n")
              .append("/\\ time = 0\n")
@@ -86,7 +134,17 @@ public class MicrowaveService {
              .append("/\\ time' = 0\n")
              .append("/\\ radiation' = OFF\n")
              .append("/\\ UNCHANGED <<door, power>>\n\n")
-             .append("Next == Init \\/ TogglePower \\/ IncrementTime \\/ Start \\/ Tick \\/ Cancel\n\n")
+             .append("CloseDoor ==\n")
+             .append("/\\ door = OPEN\n")
+             .append("/\\ door' = CLOSED\n")
+             .append("/\\ UNCHANGED <<time, radiation, power>>\n\n")
+             .append("OpenDoor ==\n")
+             .append("/\\ door = CLOSED\n")
+             .append("/\\ door' = OPEN\n")
+             .append("/\\ radiation' = OFF\n")
+             .append("/\\ UNCHANGED <<time, power>>\n\n")
+             .append("Next == TogglePower \\/ IncrementTime \\/ Start \\/ Tick \\/ Cancel \\/ CloseDoor \\/ OpenDoor\n\n")
+             .append("Safe == ~(radiation = ON /\\ door = OPEN)\n\n")
              .append("Spec == Init /\\ [][Next]_<<door,time,radiation,power>>\n\n")
              .append("====\n");
         }
@@ -95,7 +153,10 @@ public class MicrowaveService {
         b.append("/\\ time = ").append(state.getTimeRemaining()).append("\n");
         b.append("/\\ radiation = ").append(state.getRadiation()).append("\n");
         b.append("/\\ power = ").append(state.getPower()).append("\n\n");
-        verificationLog.add(b.toString());
+        
+        // Add new state to log
+        verificationLogService.addLogEntry(b.toString());
+        
         log.debug(b.toString());
     }
 
@@ -104,7 +165,7 @@ public class MicrowaveService {
     }
 
     public List<String> getVerificationLog() {
-        return new ArrayList<>(verificationLog);
+        return verificationLogService.getVerificationLog();
     }
 
     public MicrowaveState getState() { return state; }
@@ -121,5 +182,15 @@ public class MicrowaveService {
         } catch (Exception e) {
             log.error("TLC integration failed", e);
         }
+    }
+    
+    public boolean isDangerousMode() {
+        return dangerousMode;
+    }
+    
+    public void setDangerousMode(boolean dangerousMode) {
+        this.dangerousMode = dangerousMode;
+        verificationLogService.addLogEntry("(* Mode changed to " + (dangerousMode ? "DANGEROUS" : "SAFE") + " *)");
+        pushUpdate();
     }
 }

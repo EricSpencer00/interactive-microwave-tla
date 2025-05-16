@@ -3,6 +3,7 @@ com/example/tlamicrowave/model/MicrowaveState.class
 com/example/tlamicrowave/model/MicrowaveState$BeepState.class
 com/example/tlamicrowave/model/MicrowaveState$DoorState.class
 com/example/tlamicrowave/service/TlcIntegrationService$TlcResult.class
+com/example/tlamicrowave/service/VerificationLogService.class
 com/example/tlamicrowave/model/MicrowaveState$RadiationState.class
 com/example/tlamicrowave/ui/MicrowaveView.class
 com/example/tlamicrowave/model/MicrowaveState$PowerState.class

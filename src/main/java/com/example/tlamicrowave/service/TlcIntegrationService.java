@@ -2,10 +2,12 @@ package com.example.tlamicrowave.service;
 
 import org.springframework.stereotype.Service;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.beans.factory.annotation.Autowired;
 import java.io.*;
 import java.nio.file.*;
 import java.util.*;
 import java.util.regex.*;
+import java.util.stream.Collectors;
 
 @Service
 public class TlcIntegrationService {
@@ -20,46 +22,114 @@ public class TlcIntegrationService {
     
     @Value("${tlc.cmd.args}")
     private String tlcArgs;   // comma-separated
+    
+    @Autowired
+    private VerificationLogService verificationLogService;
 
     /**
-     * Writes a clean TLA+ specification file to disk.
+     * Writes a TLA+ specification file to disk using the verification log.
      */
     public void generateSpecFile() throws IOException {
-        String spec =
-            "---- MODULE Microwave ----\n" +
-            "EXTENDS Integers, TLC\n\n" +
-            "VARIABLES door, time, radiation, power\n\n" +
-            "Init ==\n" +
-            "/\\ door = CLOSED\n" +
-            "/\\ time = 0\n" +
-            "/\\ radiation = OFF\n" +
-            "/\\ power = OFF\n\n" +
-            "TogglePower ==\n" +
-            "/\\ UNCHANGED <<door, time, radiation>>\n" +
-            "/\\ power' = IF power = ON THEN OFF ELSE ON\n\n" +
-            "IncrementTime ==\n" +
-            "/\\ UNCHANGED <<door, radiation, power>>\n" +
-            "/\\ time' = time + 3\n\n" +
-            "Start ==\n" +
-            "/\\ time > 0\n" +
-            "/\\ radiation' = ON\n" +
-            "/\\ UNCHANGED <<door, time, power>>\n\n" +
-            "Tick ==\n" +
-            "/\\ time > 0\n" +
-            "/\\ time' = time - 1\n" +
-            "/\\ UNCHANGED <<door, power>>\n" +
-            "/\\ radiation' = IF time' = 0 THEN OFF ELSE radiation\n\n" +
-            "Cancel ==\n" +
-            "/\\ time' = 0\n" +
-            "/\\ radiation' = OFF\n" +
-            "/\\ UNCHANGED <<door, power>>\n\n" +
-            "Safe == ~(radiation = ON /\\ door = OPEN)\n\n" +
-            "Spec == Init /\\ [][Next]_<<door,time,radiation,power>>\n\n" +
-            "THEOREM Spec => []Safe\n" +
-            "====\n";
-        Path specDir = Paths.get(specDirPath);
-        Files.createDirectories(specDir);
-        Files.writeString(specDir.resolve(SPEC_FILENAME), spec);
+        List<String> verificationLog = verificationLogService.getVerificationLog();
+        
+        if (verificationLog.isEmpty()) {
+            // If no log exists, generate a default spec
+            String spec =
+                "---- MODULE Microwave ----\n" +
+                "EXTENDS Integers, TLC\n\n" +
+                "VARIABLES door, time, radiation, power\n\n" +
+                "CONSTANTS OPEN, CLOSED, ON, OFF\n\n" +
+                "Init ==\n" +
+                "/\\ door = CLOSED\n" +
+                "/\\ time = 0\n" +
+                "/\\ radiation = OFF\n" +
+                "/\\ power = OFF\n\n" +
+                "TogglePower ==\n" +
+                "/\\ UNCHANGED <<door, time, radiation>>\n" +
+                "/\\ power' = IF power = ON THEN OFF ELSE ON\n\n" +
+                "IncrementTime ==\n" +
+                "/\\ UNCHANGED <<door, radiation, power>>\n" +
+                "/\\ time' = time + 3\n\n" +
+                "Start ==\n" +
+                "/\\ time > 0\n" +
+                "/\\ radiation' = ON\n" +
+                "/\\ UNCHANGED <<door, time, power>>\n\n" +
+                "Tick ==\n" +
+                "/\\ time > 0\n" +
+                "/\\ time' = time - 1\n" +
+                "/\\ UNCHANGED <<door, power>>\n" +
+                "/\\ radiation' = IF time' = 0 THEN OFF ELSE radiation\n\n" +
+                "Cancel ==\n" +
+                "/\\ time' = 0\n" +
+                "/\\ radiation' = OFF\n" +
+                "/\\ UNCHANGED <<door, power>>\n\n" +
+                "CloseDoor ==\n" +
+                "/\\ door = OPEN\n" +
+                "/\\ door' = CLOSED\n" +
+                "/\\ UNCHANGED <<time, radiation, power>>\n\n" +
+                "OpenDoor ==\n" +
+                "/\\ door = CLOSED\n" +
+                "/\\ door' = OPEN\n" +
+                "/\\ radiation' = OFF\n" +
+                "/\\ UNCHANGED <<time, power>>\n\n" +
+                "Next == TogglePower \\/ IncrementTime \\/ Start \\/ Tick \\/ Cancel \\/ CloseDoor \\/ OpenDoor\n\n" +
+                "Safe == ~(radiation = ON /\\ door = OPEN)\n\n" +
+                "Spec == Init /\\ [][Next]_<<door,time,radiation,power>>\n\n" +
+                "====\n";
+            Path specPath = Paths.get(System.getProperty("user.dir"), SPEC_FILENAME);
+            Files.writeString(specPath, spec);
+            return;
+        }
+        
+        // Extract the TLA+ specification prefix (up to the first state log)
+        StringBuilder specBuilder = new StringBuilder();
+        boolean foundFirstState = false;
+        
+        for (String logEntry : verificationLog) {
+            if (!foundFirstState && logEntry.contains("(* State:")) {
+                foundFirstState = true;
+            }
+            
+            if (!foundFirstState) {
+                specBuilder.append(logEntry);
+            }
+        }
+        
+        // Add the states as a trace
+        specBuilder.append("\n(* Trace of states from execution *)\n");
+        specBuilder.append("Trace ==\n");
+        
+        List<String> stateEntries = verificationLog.stream()
+            .filter(entry -> entry.contains("(* State:"))
+            .collect(Collectors.toList());
+            
+        for (int i = 0; i < stateEntries.size(); i++) {
+            String stateEntry = stateEntries.get(i);
+            specBuilder.append("  ").append(i == 0 ? "/\\ " : "\\/ /\\ ").append("door = ")
+                       .append(extractValue(stateEntry, "door")).append("\n");
+            specBuilder.append("     /\\ time = ").append(extractValue(stateEntry, "time")).append("\n");
+            specBuilder.append("     /\\ radiation = ").append(extractValue(stateEntry, "radiation")).append("\n");
+            specBuilder.append("     /\\ power = ").append(extractValue(stateEntry, "power")).append("\n");
+            if (i < stateEntries.size() - 1) {
+                specBuilder.append("\n");
+            }
+        }
+        
+        // End the file
+        specBuilder.append("\n====\n");
+        
+        // Write to the root directory
+        Path specPath = Paths.get(System.getProperty("user.dir"), SPEC_FILENAME);
+        Files.writeString(specPath, specBuilder.toString());
+    }
+    
+    private String extractValue(String stateEntry, String variable) {
+        Pattern pattern = Pattern.compile("/\\\\ " + variable + " = (.+)");
+        Matcher matcher = pattern.matcher(stateEntry);
+        if (matcher.find()) {
+            return matcher.group(1).trim();
+        }
+        return "\"UNKNOWN\"";
     }
 
     /**
@@ -68,10 +138,16 @@ public class TlcIntegrationService {
     public void generateConfigFile() throws IOException {
         String cfg =
             "SPECIFICATION Spec\n" +
-            "INVARIANT Safe\n";
-        Path specDir = Paths.get(specDirPath);
-        Files.createDirectories(specDir);
-        Files.writeString(specDir.resolve(CFG_FILENAME), cfg);
+            "INVARIANT Safe\n" +
+            "CONSTANTS\n" +
+            "  OPEN = \"OPEN\"\n" +
+            "  CLOSED = \"CLOSED\"\n" +
+            "  ON = \"ON\"\n" +
+            "  OFF = \"OFF\"\n" +
+            "MAX_STATES 1000\n" +
+            "MAX_TRACE_LENGTH 100\n";
+        Path cfgPath = Paths.get(System.getProperty("user.dir"), CFG_FILENAME);
+        Files.writeString(cfgPath, cfg);
     }
 
     /**
@@ -82,8 +158,13 @@ public class TlcIntegrationService {
         Path specPath = Paths.get(System.getProperty("user.dir"), SPEC_FILENAME);
         Path cfgPath = Paths.get(System.getProperty("user.dir"), CFG_FILENAME);
         
-        if (!Files.exists(specPath) || !Files.exists(cfgPath)) {
-            throw new IOException("TLA+ specification files not found in root directory");
+        // Generate files if they don't exist
+        if (!Files.exists(specPath)) {
+            generateSpecFile();
+        }
+        
+        if (!Files.exists(cfgPath)) {
+            generateConfigFile();
         }
 
         // Now run TLC
