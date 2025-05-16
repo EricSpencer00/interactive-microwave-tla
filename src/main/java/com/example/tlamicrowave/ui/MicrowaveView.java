@@ -212,7 +212,7 @@ public class MicrowaveView extends VerticalLayout {
                             } else if (result.timedOut) {
                                 Notification.show("⚠️ TLC verification timed out", 5_000, Position.TOP_END);
                                 verificationPanel.setText("TLC VERIFICATION TIMED OUT\n\n" +
-                                                        "The verification process took too long and was automatically stopped.\n\n" +
+                                                        "The verification process took too long and was automatically stopped after 5 minutes.\n\n" +
                                                         "This usually happens when:\n" +
                                                         "1. Your state trace is very long\n" +
                                                         "2. The state space is too complex to explore efficiently\n\n" +

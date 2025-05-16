@@ -91,9 +91,4 @@ Trace ==
      /\ radiation = OFF
      /\ power = ON
 
-  \/ /\ door = OPEN
-     /\ time = 0
-     /\ radiation = OFF
-     /\ power = ON
-
 ====

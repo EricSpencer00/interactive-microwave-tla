@@ -234,14 +234,14 @@ public class TlcIntegrationService {
         outputReader.setDaemon(true);
         outputReader.start();
         
-        log.debug("Waiting for TLC process to complete (timeout: 60 seconds)");
-        // Use a timeout of 60 seconds
-        boolean completed = proc.waitFor(60, TimeUnit.SECONDS);
+        log.debug("Waiting for TLC process to complete (timeout: 300 seconds)");
+        // Use a timeout of 300 seconds
+        boolean completed = proc.waitFor(300, TimeUnit.SECONDS);
         log.debug("TLC process wait completed: timeout={}, elapsed={}ms", !completed, System.currentTimeMillis() - startTime);
         
         if (!completed) {
             // If the process didn't complete in time, kill it
-            log.warn("TLC verification timed out after 60 seconds, killing process");
+            log.warn("TLC verification timed out after 300 seconds, killing process");
             proc.destroyForcibly();
             
             // Wait for the output reader to finish
@@ -252,7 +252,7 @@ public class TlcIntegrationService {
                 log.error("Interrupted while waiting for output reader", e);
             }
             
-            output.append("TLC verification timed out after 60 seconds.\n");
+            output.append("TLC verification timed out after 300 seconds.\n");
             output.append("This likely means the state space is too large to explore efficiently.\n");
             output.append("Consider using fewer states in your trace or running TLC manually.\n");
             
