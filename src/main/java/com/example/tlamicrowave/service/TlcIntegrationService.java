@@ -8,6 +8,9 @@ import java.nio.file.*;
 import java.util.*;
 import java.util.regex.*;
 import java.util.stream.Collectors;
+import java.util.concurrent.TimeUnit;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @Service
 public class TlcIntegrationService {
@@ -25,6 +28,8 @@ public class TlcIntegrationService {
     
     @Autowired
     private VerificationLogService verificationLogService;
+
+    private static final Logger log = LoggerFactory.getLogger(TlcIntegrationService.class);
 
     /**
      * Writes a TLA+ specification file to disk using the verification log.
@@ -51,6 +56,8 @@ public class TlcIntegrationService {
                    .append("/\\ time' = time + 3\n\n")
                    .append("Start ==\n")
                    .append("/\\ time > 0\n")
+                   .append("/\\ door = CLOSED\n")
+                   .append("/\\ power = ON\n")
                    .append("/\\ radiation' = ON\n")
                    .append("/\\ UNCHANGED <<door, time, power>>\n\n")
                    .append("Tick ==\n")
@@ -83,13 +90,19 @@ public class TlcIntegrationService {
             return;
         }
         
-        // Add the states as a trace
-        specBuilder.append("(* Trace of states from execution *)\n");
-        specBuilder.append("Trace ==\n");
-        
+        // Extract only the last 20 states to keep verification fast
         List<String> stateEntries = verificationLog.stream()
             .filter(entry -> entry.contains("(* State:"))
             .collect(Collectors.toList());
+        
+        // Take only the last 20 states if there are more
+        if (stateEntries.size() > 20) {
+            stateEntries = stateEntries.subList(stateEntries.size() - 20, stateEntries.size());
+        }
+        
+        // Add the reduced states as a trace
+        specBuilder.append("(* Trace of states from execution - last 20 states only *)\n");
+        specBuilder.append("Trace ==\n");
             
         for (int i = 0; i < stateEntries.size(); i++) {
             String stateEntry = stateEntries.get(i);
@@ -133,7 +146,8 @@ public class TlcIntegrationService {
             "  ON = \"ON\"\n" +
             "  OFF = \"OFF\"\n" +
             "MAX_STATES = 1000\n" +
-            "MAX_TRACE_LENGTH = 100\n";
+            "MAX_TRACE_LENGTH = 100\n" +
+            "WORKERS = 2\n";
         Path cfgPath = Paths.get(System.getProperty("user.dir"), CFG_FILENAME);
         Files.writeString(cfgPath, cfg);
     }
@@ -142,19 +156,29 @@ public class TlcIntegrationService {
      * Executes the TLC model checker against the generated spec, returning the results.
      */
     public TlcResult runTlc() throws IOException, InterruptedException {
+        log.debug("TLC verification started");
+        
         // Use files from root directory
         Path specPath = Paths.get(System.getProperty("user.dir"), SPEC_FILENAME);
         Path cfgPath = Paths.get(System.getProperty("user.dir"), CFG_FILENAME);
         
+        log.debug("Deleting existing files before generating new ones");
         // Delete existing files first to ensure we don't have stale data
         Files.deleteIfExists(specPath);
         Files.deleteIfExists(cfgPath);
         
+        log.debug("Generating fresh spec file");
         // Generate fresh files
+        long startGen = System.currentTimeMillis();
         generateSpecFile();
+        log.debug("Spec file generation completed in {} ms", System.currentTimeMillis() - startGen);
+        
+        log.debug("Generating config file");
+        startGen = System.currentTimeMillis();
         generateConfigFile();
+        log.debug("Config file generation completed in {} ms", System.currentTimeMillis() - startGen);
 
-        // Now run TLC
+        // Now run TLC with aggressive performance options
         List<String> command = new ArrayList<>();
         Path scriptPath = Paths.get(System.getProperty("user.dir"), "run-tlc.sh");
         command.add(scriptPath.toString());
@@ -162,25 +186,92 @@ public class TlcIntegrationService {
         command.add(specPath.toString());
         command.add("-config");
         command.add(cfgPath.toString());
+        
+        // Add performance options
+        command.add("-workers");
+        command.add("2");  // Use 2 worker threads
+        command.add("-nowarning"); // Skip warnings
+        command.add("-cleanup");   // Clean up temp files
+        
+        log.debug("Preparing to execute TLC command: {}", String.join(" ", command));
 
         ProcessBuilder pb = new ProcessBuilder(command);
         pb.directory(Paths.get(System.getProperty("user.dir")).toFile());  // Run from root directory
         pb.redirectErrorStream(true);
+        
+        // Check the size of the specification file
+        long specSize = Files.size(specPath);
+        log.debug("Spec file size: {} bytes", specSize);
+        
+        List<String> verificationLog = verificationLogService.getVerificationLog();
+        log.debug("Verification log contains {} entries", verificationLog.size());
+        
+        // For large logs (more than 50 states), issue a warning
+        if (verificationLog.size() > 50) {
+            log.warn("Large verification log with {} entries. TLC verification may be slow.", verificationLog.size());
+        }
+        
+        // Set a timeout for the process
+        log.debug("Starting TLC process");
+        long startTime = System.currentTimeMillis();
         Process proc = pb.start();
-
+        log.debug("TLC process started in {} ms", System.currentTimeMillis() - startTime);
+        
+        // Start reading output immediately in a separate thread to prevent blocking
         StringBuilder output = new StringBuilder();
-        try (BufferedReader reader = new BufferedReader(new InputStreamReader(proc.getInputStream()))) {
-            String line;
-            while ((line = reader.readLine()) != null) {
-                output.append(line).append(System.lineSeparator());
+        Thread outputReader = new Thread(() -> {
+            try (BufferedReader reader = new BufferedReader(new InputStreamReader(proc.getInputStream()))) {
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    log.debug("TLC output: {}", line);
+                    output.append(line).append(System.lineSeparator());
+                }
+            } catch (IOException e) {
+                log.error("Error reading TLC output", e);
             }
+            log.debug("TLC output reader thread finished");
+        });
+        outputReader.setDaemon(true);
+        outputReader.start();
+        
+        log.debug("Waiting for TLC process to complete (timeout: 60 seconds)");
+        // Use a timeout of 60 seconds
+        boolean completed = proc.waitFor(60, TimeUnit.SECONDS);
+        log.debug("TLC process wait completed: timeout={}, elapsed={}ms", !completed, System.currentTimeMillis() - startTime);
+        
+        if (!completed) {
+            // If the process didn't complete in time, kill it
+            log.warn("TLC verification timed out after 60 seconds, killing process");
+            proc.destroyForcibly();
+            
+            // Wait for the output reader to finish
+            log.debug("Waiting for output reader thread to finish");
+            try {
+                outputReader.join(1000);
+            } catch (InterruptedException e) {
+                log.error("Interrupted while waiting for output reader", e);
+            }
+            
+            output.append("TLC verification timed out after 60 seconds.\n");
+            output.append("This likely means the state space is too large to explore efficiently.\n");
+            output.append("Consider using fewer states in your trace or running TLC manually.\n");
+            
+            log.debug("Returning timeout result");
+            // Return a result indicating timeout
+            return new TlcResult(false, new ArrayList<>(), output.toString(), true);
         }
 
-        int exitCode = proc.waitFor();
+        int exitCode = proc.exitValue();
+        log.debug("TLC process completed with exit code: {}", exitCode);
         boolean invariantHolds = (exitCode == 0);
+        log.debug("Invariant holds: {}", invariantHolds);
 
+        log.debug("Parsing TLC trace from output");
         List<Map<String, String>> traceStates = parseTlcTrace(output.toString());
-        return new TlcResult(invariantHolds, traceStates, output.toString());
+        log.debug("Found {} trace states", traceStates.size());
+        
+        log.debug("TLC verification completed in {} ms", System.currentTimeMillis() - startTime);
+        return new TlcResult(invariantHolds, traceStates, output.toString(), false);
     }
 
     /**
@@ -261,15 +352,96 @@ public class TlcIntegrationService {
         return true;
     }
 
+    /**
+     * Directly checks the verification log for safety violations without running TLC.
+     * This is useful for checking if the actual execution trace violates safety properties.
+     */
+    public SafetyCheckResult checkSafetyInLog() {
+        List<String> verificationLog = verificationLogService.getVerificationLog();
+        List<String> stateEntries = verificationLog.stream()
+            .filter(entry -> entry.contains("(* State:"))
+            .collect(Collectors.toList());
+        
+        List<LogViolation> violations = new ArrayList<>();
+        int stateNum = 0;
+        
+        for (String stateEntry : stateEntries) {
+            String doorState = extractValue(stateEntry, "door");
+            String radiationState = extractValue(stateEntry, "radiation");
+            
+            // Check for door open with radiation on
+            if (doorState.equals("OPEN") && radiationState.equals("ON")) {
+                String stateLabel = "";
+                if (stateEntry.contains("(* State:")) {
+                    stateLabel = stateEntry.substring(
+                        stateEntry.indexOf("(* State:") + 10, 
+                        stateEntry.indexOf("*)")
+                    ).trim();
+                }
+                
+                violations.add(new LogViolation(
+                    stateNum,
+                    stateLabel,
+                    "Door OPEN with Radiation ON",
+                    extractStateMap(stateEntry)
+                ));
+            }
+            stateNum++;
+        }
+        
+        return new SafetyCheckResult(violations.isEmpty(), violations);
+    }
+    
+    private Map<String, String> extractStateMap(String stateEntry) {
+        Map<String, String> stateMap = new LinkedHashMap<>();
+        stateMap.put("door", extractValue(stateEntry, "door"));
+        stateMap.put("time", extractValue(stateEntry, "time"));
+        stateMap.put("radiation", extractValue(stateEntry, "radiation"));
+        stateMap.put("power", extractValue(stateEntry, "power"));
+        return stateMap;
+    }
+    
+    /**
+     * Result of checking safety properties directly in the log.
+     */
+    public static class SafetyCheckResult {
+        public final boolean safetyHolds;
+        public final List<LogViolation> violations;
+        
+        public SafetyCheckResult(boolean safetyHolds, List<LogViolation> violations) {
+            this.safetyHolds = safetyHolds;
+            this.violations = violations;
+        }
+    }
+    
+    /**
+     * Represents a safety violation found in the log.
+     */
+    public static class LogViolation {
+        public final int stateNum;
+        public final String stateLabel;
+        public final String violationDesc;
+        public final Map<String, String> state;
+        
+        public LogViolation(int stateNum, String stateLabel, String violationDesc, Map<String, String> state) {
+            this.stateNum = stateNum;
+            this.stateLabel = stateLabel;
+            this.violationDesc = violationDesc;
+            this.state = state;
+        }
+    }
+
     public static class TlcResult {
         public final boolean invariantHolds;
         public final List<Map<String, String>> traceStates;
         public final String rawOutput;
+        public final boolean timedOut;
 
-        public TlcResult(boolean invariantHolds, List<Map<String, String>> traceStates, String rawOutput) {
+        public TlcResult(boolean invariantHolds, List<Map<String, String>> traceStates, String rawOutput, boolean timedOut) {
             this.invariantHolds = invariantHolds;
             this.traceStates = traceStates;
             this.rawOutput = rawOutput;
+            this.timedOut = timedOut;
         }
     }
 }

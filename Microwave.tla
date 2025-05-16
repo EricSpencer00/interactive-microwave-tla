@@ -21,6 +21,8 @@ IncrementTime ==
 
 Start ==
 /\ time > 0
+/\ door = CLOSED
+/\ power = ON
 /\ radiation' = ON
 /\ UNCHANGED <<door, time, power>>
 
@@ -52,11 +54,46 @@ Safe == ~(radiation = ON /\ door = OPEN)
 
 Spec == Init /\ [][Next]_<<door,time,radiation,power>>
 
-(* Trace of states from execution *)
+(* Trace of states from execution - last 20 states only *)
 Trace ==
   /\ door = CLOSED
      /\ time = 0
      /\ radiation = OFF
      /\ power = OFF
+
+  \/ /\ door = CLOSED
+     /\ time = 0
+     /\ radiation = OFF
+     /\ power = ON
+
+  \/ /\ door = CLOSED
+     /\ time = 3
+     /\ radiation = OFF
+     /\ power = ON
+
+  \/ /\ door = CLOSED
+     /\ time = 3
+     /\ radiation = ON
+     /\ power = ON
+
+  \/ /\ door = CLOSED
+     /\ time = 2
+     /\ radiation = ON
+     /\ power = ON
+
+  \/ /\ door = CLOSED
+     /\ time = 1
+     /\ radiation = ON
+     /\ power = ON
+
+  \/ /\ door = CLOSED
+     /\ time = 0
+     /\ radiation = OFF
+     /\ power = ON
+
+  \/ /\ door = OPEN
+     /\ time = 0
+     /\ radiation = OFF
+     /\ power = ON
 
 ====

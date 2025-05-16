@@ -25,6 +25,7 @@ import java.util.List;
 import java.util.ArrayList;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import java.util.Arrays;
 
 @Route("")
 @PermitAll
@@ -43,6 +44,7 @@ public class MicrowaveView extends VerticalLayout {
     private boolean showAllLogs = false;
     private boolean isNavigatingHistory = false;
     private Button showAllButton;
+    private Button verifyBtn;
     private final HorizontalLayout logNavigation;
     private static final Logger log = LoggerFactory.getLogger(MicrowaveView.class);
     private final Checkbox dangerModeToggle;
@@ -160,56 +162,124 @@ public class MicrowaveView extends VerticalLayout {
             currentLogIndex = Math.max(0, allLogs.size() - 1);
             updateLogDisplay();
         });
+        Button clearLogButton = new Button("Clear Log", e -> {
+            try {
+                // Use the clear method in VerificationLogService
+                logService.clear();
+                // Add back initial state
+                service.logState("Initial");
+                // Update the UI
+                allLogs.clear();
+                allLogs.addAll(service.getVerificationLog());
+                currentLogIndex = 0;
+                updateLogDisplay();
+                Notification.show("Verification log cleared", 2_000, Position.TOP_END);
+            } catch (Exception ex) {
+                log.error("Failed to clear log", ex);
+                Notification.show("Error clearing log: " + ex.getMessage(), 3_000, Position.TOP_END);
+            }
+        });
         showAllButton = new Button("Show All", e -> {
             showAllLogs = !showAllLogs;
             showAllButton.setText(showAllLogs ? "Show One" : "Show All");
             updateLogDisplay();
         });
-        Button verifyBtn = new Button("Verify with TLC", e -> {
+        
+        // Create the verify button as a class field
+        verifyBtn = new Button("Verify with TLC", e -> {
             try {
-                service.verifyWithTlc();
-                var result = service.getLastTlcResult();
-                if (result == null) {
-                    Notification.show("TLC not run yet", 2_000, Position.TOP_END);
-                    verificationPanel.setText("TLC verification not run yet.");
-                } else if (result.invariantHolds) {
-                    Notification.show("✔ Invariant holds!", 3_000, Position.TOP_END);
-                    verificationPanel.setText("Invariant holds! No violations found.");
-                } else {
-                    Notification.show("❌ Safety violation detected", 3_000, Position.TOP_END);
-                    StringBuilder sb = new StringBuilder();
-                    sb.append("SAFETY VIOLATION DETECTED!\n\n");
-                    
-                    // Always display a clear explanation of the violation
-                    sb.append("The safety property 'Safe == ~(radiation = ON /\\ door = OPEN)' was violated.\n");
-                    sb.append("This means the microwave had radiation ON while the door was OPEN.\n\n");
-                    
-                    if (result.traceStates != null && !result.traceStates.isEmpty()) {
-                        sb.append("Violation Trace:\n\n");
-                        for (int i = 0; i < result.traceStates.size(); i++) {
-                            sb.append("State ").append(i).append(":\n");
-                            result.traceStates.get(i).forEach((k, v) -> 
-                                sb.append("  ").append(k).append(" = ").append(v).append("\n"));
-                            sb.append("\n");
-                        }
-                    } else if (result.rawOutput.contains("TLC found states with the invariant violated")) {
-                        sb.append("TLC found states where radiation was ON with the door OPEN.\n\n");
-                        sb.append("Raw TLC Output:\n\n");
-                        sb.append(result.rawOutput);
-                    } else {
-                        sb.append("Raw TLC Output:\n\n");
-                        sb.append(result.rawOutput);
+                // Show immediate feedback to user
+                verifyBtn.setEnabled(false);
+                verifyBtn.setText("Verifying...");
+                verificationPanel.setText("Verification in progress...\nPlease wait, this may take a few seconds...");
+                
+                // Run the verification on a background thread to avoid blocking the UI
+                new Thread(() -> {
+                    try {
+                        log.debug("Starting TLC verification from UI");
+                        service.verifyWithTlc();
+                        
+                        // Update UI on completion
+                        ui.access(() -> {
+                            log.debug("TLC verification completed, updating UI");
+                            verifyBtn.setEnabled(true);
+                            verifyBtn.setText("Verify with TLC");
+                            
+                            var result = service.getLastTlcResult();
+                            if (result == null) {
+                                Notification.show("TLC not run yet", 2_000, Position.TOP_END);
+                                verificationPanel.setText("TLC verification not run yet.");
+                            } else if (result.timedOut) {
+                                Notification.show("⚠️ TLC verification timed out", 5_000, Position.TOP_END);
+                                verificationPanel.setText("TLC VERIFICATION TIMED OUT\n\n" +
+                                                        "The verification process took too long and was automatically stopped.\n\n" +
+                                                        "This usually happens when:\n" +
+                                                        "1. Your state trace is very long\n" +
+                                                        "2. The state space is too complex to explore efficiently\n\n" +
+                                                        "Consider:\n" +
+                                                        "- Clearing your state trace and starting with fewer actions\n" +
+                                                        "- Using the direct safety check results instead:\n\n" +
+                                                        result.rawOutput);
+                            } else if (result.invariantHolds) {
+                                Notification.show("✅ Safety properties verified!", 3_000, Position.TOP_END);
+                                verificationPanel.setText("Safety verification completed successfully!\n\n" +
+                                                        "The microwave behaved safely - radiation was never ON while the door was OPEN.");
+                            } else {
+                                // Check if it's a log violation or a model checking violation
+                                boolean isLogViolation = result.rawOutput.contains("Safety violations found in execution log");
+                                
+                                if (isLogViolation) {
+                                    Notification.show("❌ Safety violation detected in execution", 3_000, Position.TOP_END);
+                                } else {
+                                    Notification.show("❌ Safety violation detected in model", 3_000, Position.TOP_END);
+                                }
+                                
+                                StringBuilder sb = new StringBuilder();
+                                sb.append("SAFETY VIOLATION DETECTED!\n\n");
+                                
+                                // Always display a clear explanation of the violation
+                                sb.append("The safety property 'Safe == ~(radiation = ON /\\ door = OPEN)' was violated.\n");
+                                sb.append("This means the microwave had radiation ON while the door was OPEN.\n\n");
+                                
+                                if (isLogViolation) {
+                                    sb.append("The violation occurred in your actual execution trace:\n\n");
+                                    sb.append(result.rawOutput);
+                                } else if (result.traceStates != null && !result.traceStates.isEmpty()) {
+                                    sb.append("Model Checking found a violation trace:\n\n");
+                                    for (int i = 0; i < result.traceStates.size(); i++) {
+                                        sb.append("State ").append(i).append(":\n");
+                                        result.traceStates.get(i).forEach((k, v) -> 
+                                            sb.append("  ").append(k).append(" = ").append(v).append("\n"));
+                                        sb.append("\n");
+                                    }
+                                } else {
+                                    sb.append("Raw TLC Output:\n\n");
+                                    sb.append(result.rawOutput);
+                                }
+                                
+                                verificationPanel.setText(sb.toString());
+                            }
+                        });
+                    } catch (Exception ex) {
+                        log.error("TLC verification failed", ex);
+                        ui.access(() -> {
+                            verifyBtn.setEnabled(true);
+                            verifyBtn.setText("Verify with TLC");
+                            Notification.show("Error running TLC: " + ex.getMessage(), 5_000, Position.TOP_END);
+                            verificationPanel.setText("Error running TLC:\n\n" + ex.getMessage() + "\n\n" +
+                                                    "Stack trace:\n" + Arrays.toString(ex.getStackTrace()));
+                        });
                     }
-                    
-                    verificationPanel.setText(sb.toString());
-                }
+                }).start();
             } catch (Exception ex) {
-                log.error("TLC verification failed", ex);
-                Notification.show("Error running TLC: " + ex.getMessage(), 5_000, Position.TOP_END);
-                verificationPanel.setText("Error running TLC:\n\n" + ex.getMessage());
+                log.error("Failed to start verification thread", ex);
+                verifyBtn.setEnabled(true);
+                verifyBtn.setText("Verify with TLC");
+                Notification.show("Error starting verification: " + ex.getMessage(), 5_000, Position.TOP_END);
+                verificationPanel.setText("Error starting verification:\n\n" + ex.getMessage());
             }
         });
-        logNavigation.add(prevButton, nextButton, latestButton, showAllButton, verifyBtn);
+        logNavigation.add(prevButton, nextButton, latestButton, clearLogButton, showAllButton, verifyBtn);
         logNavigation.setSpacing(true);
 
         // Update bounding box when show all button is clicked

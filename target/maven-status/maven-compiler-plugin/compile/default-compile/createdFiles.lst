@@ -1,4 +1,5 @@
 com/example/tlamicrowave/AppShellConfig.class
+com/example/tlamicrowave/service/TlcIntegrationService$SafetyCheckResult.class
 com/example/tlamicrowave/model/MicrowaveState.class
 com/example/tlamicrowave/model/MicrowaveState$BeepState.class
 com/example/tlamicrowave/model/MicrowaveState$DoorState.class
@@ -10,4 +11,5 @@ com/example/tlamicrowave/model/MicrowaveState$PowerState.class
 com/example/tlamicrowave/ui/MicrowaveGraphic.class
 com/example/tlamicrowave/TlaMicrowaveApplication.class
 com/example/tlamicrowave/service/TlcIntegrationService.class
+com/example/tlamicrowave/service/TlcIntegrationService$LogViolation.class
 com/example/tlamicrowave/service/MicrowaveService.class

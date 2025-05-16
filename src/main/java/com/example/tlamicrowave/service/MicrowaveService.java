@@ -12,6 +12,8 @@ import java.util.Objects;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import lombok.extern.slf4j.Slf4j;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -247,7 +249,47 @@ public class MicrowaveService {
 
     public void verifyWithTlc() {
         try {
-            lastTlcResult = tlcService.runTlc();
+            log.debug("Starting verification process");
+            // First check the actual execution log for safety violations
+            log.debug("Checking safety violations in execution log");
+            long startTime = System.currentTimeMillis();
+            TlcIntegrationService.SafetyCheckResult logCheck = tlcService.checkSafetyInLog();
+            log.debug("Safety check completed in {}ms. Safety holds: {}, violations: {}", 
+                     System.currentTimeMillis() - startTime, 
+                     logCheck.safetyHolds, 
+                     logCheck.violations.size());
+            
+            // Only run TLC if no violations in the log, to avoid model-checking errors
+            if (logCheck.safetyHolds) {
+                log.debug("No safety violations in log, proceeding with TLC verification");
+                lastTlcResult = tlcService.runTlc();
+                log.debug("TLC verification completed. Invariant holds: {}, timed out: {}", 
+                         lastTlcResult.invariantHolds, lastTlcResult.timedOut);
+            } else {
+                log.debug("Safety violations found in log, skipping TLC verification");
+                // Create a TLC result with the log violations
+                StringBuilder output = new StringBuilder();
+                output.append("Safety violations found in execution log:\n\n");
+                
+                for (TlcIntegrationService.LogViolation violation : logCheck.violations) {
+                    log.debug("Violation at state {}: {}", violation.stateNum, violation.violationDesc);
+                    output.append("State ").append(violation.stateNum).append(" (").append(violation.stateLabel).append("):\n");
+                    output.append("  Violation: ").append(violation.violationDesc).append("\n");
+                    
+                    for (Map.Entry<String, String> entry : violation.state.entrySet()) {
+                        output.append("  ").append(entry.getKey()).append(" = ").append(entry.getValue()).append("\n");
+                    }
+                    output.append("\n");
+                }
+                
+                // Convert log violations to the standard trace format expected by UI
+                List<Map<String, String>> traceStates = logCheck.violations.stream()
+                    .map(v -> v.state)
+                    .collect(Collectors.toList());
+                
+                lastTlcResult = new TlcIntegrationService.TlcResult(false, traceStates, output.toString(), false);
+                log.debug("Created TLC result from log violations");
+            }
         } catch (Exception e) {
             log.error("TLC integration failed", e);
         }
