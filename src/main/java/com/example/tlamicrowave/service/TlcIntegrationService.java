@@ -530,10 +530,12 @@ public class TlcIntegrationService {
                  .append("  ON = \"ON\"\n")
                  .append("  OFF = \"OFF\"\n")
                  .append("CONSTRAINT StateConstraint\n")
-                 .append("CHECK_DEADLOCK FALSE\n")  // Don't check for deadlocks
-                 .append("SYMMETRY_REDUCTION FALSE\n")  // Disable symmetry reduction for speed
-                 .append("VIEW vars\n")              // Show all variables in output
-                 .append("POSTCONDITION Trace[").append(trace.size()).append("] = [door |-> door, time |-> time, radiation |-> radiation, power |-> power]\n");
+                 .append("CHECK_DEADLOCK FALSE\n");
+        
+        // These additional options may not be supported in this version of TLC, remove them
+        // .append("SYMMETRY_REDUCTION FALSE\n")  
+        // .append("VIEW vars\n")                
+        cfgBuilder.append("POSTCONDITION Trace[").append(trace.size()).append("] = [door |-> door, time |-> time, radiation |-> radiation, power |-> power]\n");
                  
         Path traceCfgPath = Paths.get(System.getProperty("user.dir"), "TraceMicrowave.cfg");
         Files.writeString(traceCfgPath, cfgBuilder.toString());
