@@ -77,7 +77,7 @@ public class MicrowaveService {
                 "time + 3"); 
             lastLoggedState = state.clone();
         } else {
-            verificationLogService.addLogEntry("IncrementTime Violation Attempt - Power is OFF");
+            verificationLogService.addLogEntry("\\* IncrementTime Violation Attempt - Power is OFF");
             pushUpdate();
         }
     }
@@ -96,7 +96,7 @@ public class MicrowaveService {
                 logState("Start (Dangerous)");
                 lastLoggedState = state.clone();
             } else {
-                verificationLogService.addLogEntry("Start (Power Off) - Cannot turn on radiation without power");
+                verificationLogService.addLogEntry("\\* Start Violation Attempt - Cannot turn on radiation without power");
                 pushUpdate();
             }
         } else {
@@ -109,10 +109,10 @@ public class MicrowaveService {
                 } else {
                     // Log why we can't start
                     if (state.getTimeRemaining() <= 0) {
-                        verificationLogService.addLogEntry("Start Violation Attempt - Need to set time first");
+                        verificationLogService.addLogEntry("\\* Start Violation Attempt - Need to set time first");
                     }
                     if (state.getDoor() != MicrowaveState.DoorState.CLOSED) {
-                        verificationLogService.addLogEntry("Start Violation Attempt - Door must be closed");
+                        verificationLogService.addLogEntry("\\* Start Violation Attempt - Door must be closed");
                     }
                     pushUpdate();
                 }
@@ -124,13 +124,13 @@ public class MicrowaveService {
                 } else {
                     // Log why we can't start
                     if (state.getTimeRemaining() <= 0) {
-                        verificationLogService.addLogEntry("Start Violation Attempt - Need to set time first");
+                        verificationLogService.addLogEntry("\\* Start Violation Attempt - Need to set time first");
                     }
                     if (state.getDoor() != MicrowaveState.DoorState.CLOSED) {
-                        verificationLogService.addLogEntry("Start Violation Attempt - Door must be closed");
+                        verificationLogService.addLogEntry("\\* Start Violation Attempt - Door must be closed");
                     }
                     if (state.getPower() != MicrowaveState.PowerState.ON) {
-                        verificationLogService.addLogEntry("Start Violation Attempt - Power must be ON");
+                        verificationLogService.addLogEntry("\\* Start Violation Attempt - Power must be ON");
                     }
                     pushUpdate();
                 }
@@ -221,10 +221,10 @@ public class MicrowaveService {
             action.run(); 
             logState(name); 
             if (dangerousMode && !guard.getAsBoolean()) {
-                verificationLogService.addLogEntry(name + " Danger: Safety constraint violated!");
+                verificationLogService.addLogEntry("\\* " + name + " Danger: Safety constraint violated!");
             }
         } else { 
-            verificationLogService.addLogEntry(name + " Violation Attempt"); 
+            verificationLogService.addLogEntry("\\* " + name + " Violation Attempt"); 
         }
         pushUpdate();
     }
@@ -835,7 +835,7 @@ public class MicrowaveService {
     
     public void setDangerousMode(boolean dangerousMode) {
         this.dangerousMode = dangerousMode;
-        verificationLogService.addLogEntry("(* Mode changed to " + (dangerousMode ? "DANGEROUS" : "SAFE") + " *)");
+        verificationLogService.addLogEntry("\n(* Mode changed to " + (dangerousMode ? "DANGEROUS" : "SAFE") + " *)\n");
         pushUpdate();
     }
 
@@ -846,7 +846,7 @@ public class MicrowaveService {
     public void setPowerButtonEnabled(boolean enabled) {
         if (this.powerButtonEnabled != enabled) {
             this.powerButtonEnabled = enabled;
-            verificationLogService.addLogEntry("(* Power Button " + (enabled ? "ENABLED" : "DISABLED") + " *)");
+            verificationLogService.addLogEntry("\n(* Power Button " + (enabled ? "ENABLED" : "DISABLED") + " *)\n");
             
             // If disabling power button, ensure power is OFF but don't turn off radiation
             // This allows the microwave to continue working without power

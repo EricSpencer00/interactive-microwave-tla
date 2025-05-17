@@ -318,9 +318,52 @@ public class MicrowaveView extends VerticalLayout {
         verificationPanel.removeAll();
         if (!allLogs.isEmpty()) {
             if (showAllLogs) {
-                allLogs.forEach(log -> {
+                allLogs.forEach(logEntry -> {
+                    // Skip empty entries
+                    if (logEntry == null || logEntry.trim().isEmpty()) {
+                        return;
+                    }
+                    
                     Div entry = new Div();
-                    entry.getElement().setProperty("innerHTML", formatTlaLogEntry(log));
+                    
+                    // Special case for action marker lines
+                    if (logEntry.trim().startsWith("\\* <") && logEntry.contains("line") && logEntry.contains("col") && logEntry.contains(">")) {
+                        // Extract the action name for highlighting
+                        String actionName = "";
+                        try {
+                            int startPos = logEntry.indexOf("<") + 1;
+                            int endPos = logEntry.indexOf(" ", startPos);
+                            if (endPos > startPos) {
+                                actionName = logEntry.substring(startPos, endPos);
+                            }
+                        } catch (Exception e) {
+                            // If parsing fails, just use the whole line
+                        }
+                        
+                        if (!actionName.isEmpty()) {
+                            // Format with the action name highlighted
+                            String beforeAction = escapeHtml(logEntry.substring(0, logEntry.indexOf("<") + 1));
+                            String afterAction = escapeHtml(logEntry.substring(logEntry.indexOf(actionName) + actionName.length()));
+                            
+                            entry.getElement().setProperty("innerHTML", 
+                                "<span style='color:#008800'>" + beforeAction + 
+                                "<span style='color:#0000CC; font-weight:bold'>" + actionName + "</span>" + 
+                                afterAction + "</span>");
+                        } else {
+                            // Fallback if we couldn't extract the action name
+                            entry.getElement().setProperty("innerHTML", 
+                                "<span style='color:#008800; font-style:italic'>" + escapeHtml(logEntry) + "</span>");
+                        }
+                    }
+                    // Set raw content for comment-only lines to ensure they display properly
+                    else if (logEntry.trim().startsWith("(*") || logEntry.trim().startsWith("\\*")) {
+                        String safeHtml = escapeHtml(logEntry);
+                        entry.getElement().setProperty("innerHTML", 
+                            "<span style='color:#008800'>" + safeHtml + "</span>");
+                    } else {
+                        entry.getElement().setProperty("innerHTML", formatTlaLogEntry(logEntry));
+                    }
+                    
                     entry.getStyle()
                         .set("margin", "0.2em 0")
                         .set("font-family", "monospace")
@@ -329,13 +372,55 @@ public class MicrowaveView extends VerticalLayout {
                 });
             } else {
                 if (currentLogIndex < allLogs.size()) {
-                    Div entry = new Div();
-                    entry.getElement().setProperty("innerHTML", formatTlaLogEntry(allLogs.get(currentLogIndex)));
-                    entry.getStyle()
-                        .set("margin", "0.2em 0")
-                        .set("font-family", "monospace")
-                        .set("white-space", "pre-wrap");
-                    verificationPanel.add(entry);
+                    String logEntry = allLogs.get(currentLogIndex);
+                    // Skip empty entries
+                    if (logEntry != null && !logEntry.trim().isEmpty()) {
+                        Div entry = new Div();
+                        
+                        // Special case for action marker lines
+                        if (logEntry.trim().startsWith("\\* <") && logEntry.contains("line") && logEntry.contains("col") && logEntry.contains(">")) {
+                            // Extract the action name for highlighting
+                            String actionName = "";
+                            try {
+                                int startPos = logEntry.indexOf("<") + 1;
+                                int endPos = logEntry.indexOf(" ", startPos);
+                                if (endPos > startPos) {
+                                    actionName = logEntry.substring(startPos, endPos);
+                                }
+                            } catch (Exception e) {
+                                // If parsing fails, just use the whole line
+                            }
+                            
+                            if (!actionName.isEmpty()) {
+                                // Format with the action name highlighted
+                                String beforeAction = escapeHtml(logEntry.substring(0, logEntry.indexOf("<") + 1));
+                                String afterAction = escapeHtml(logEntry.substring(logEntry.indexOf(actionName) + actionName.length()));
+                                
+                                entry.getElement().setProperty("innerHTML", 
+                                    "<span style='color:#008800'>" + beforeAction + 
+                                    "<span style='color:#0000CC; font-weight:bold'>" + actionName + "</span>" + 
+                                    afterAction + "</span>");
+                            } else {
+                                // Fallback if we couldn't extract the action name
+                                entry.getElement().setProperty("innerHTML", 
+                                    "<span style='color:#008800; font-style:italic'>" + escapeHtml(logEntry) + "</span>");
+                            }
+                        }
+                        // Set raw content for comment-only lines to ensure they display properly
+                        else if (logEntry.trim().startsWith("(*") || logEntry.trim().startsWith("\\*")) {
+                            String safeHtml = escapeHtml(logEntry);
+                            entry.getElement().setProperty("innerHTML", 
+                                "<span style='color:#008800'>" + safeHtml + "</span>");
+                        } else {
+                            entry.getElement().setProperty("innerHTML", formatTlaLogEntry(logEntry));
+                        }
+                        
+                        entry.getStyle()
+                            .set("margin", "0.2em 0")
+                            .set("font-family", "monospace")
+                            .set("white-space", "pre-wrap");
+                        verificationPanel.add(entry);
+                    }
                 }
             }
         }
@@ -345,18 +430,97 @@ public class MicrowaveView extends VerticalLayout {
      * Format TLA+ log entries with syntax highlighting
      */
     private String formatTlaLogEntry(String logEntry) {
+        if (logEntry == null) {
+            return "";
+        }
+        
         // Basic syntax highlighting for TLA+ 
-        String formatted = logEntry
-            // Highlight comments
-            .replace("\\*", "<span style='color:#008800'>\\*</span>")
+        String formatted = logEntry;
+        
+        // Handle TLA+ comments (both standalone and inline)
+        if (formatted.contains("(*")) {
+            // Handle (* comment *) format with proper span tags
+            StringBuilder result = new StringBuilder();
+            int i = 0;
+            while (i < formatted.length()) {
+                int commentStart = formatted.indexOf("(*", i);
+                if (commentStart >= 0) {
+                    // Add everything before the comment
+                    result.append(formatted.substring(i, commentStart));
+                    
+                    // Find end of comment
+                    int commentEnd = formatted.indexOf("*)", commentStart);
+                    if (commentEnd >= 0) {
+                        // Extract and highlight the comment including delimiters
+                        String comment = formatted.substring(commentStart, commentEnd + 2);
+                        result.append("<span style='color:#008800'>").append(escapeHtml(comment)).append("</span>");
+                        i = commentEnd + 2;
+                    } else {
+                        // No end delimiter found, just add the rest with a closing span
+                        String remainingText = formatted.substring(commentStart);
+                        result.append("<span style='color:#008800'>").append(escapeHtml(remainingText)).append("</span>");
+                        break;
+                    }
+                } else {
+                    // No more comments, add the rest
+                    result.append(formatted.substring(i));
+                    break;
+                }
+            }
+            formatted = result.toString();
+        }
+        
+        // Handle \\* style comments (line comments)
+        if (formatted.contains("\\*")) {
+            // Process each line separately to handle multiple line comments better
+            String[] lines = formatted.split("\n");
+            StringBuilder processedLines = new StringBuilder();
+            
+            for (String line : lines) {
+                if (line.contains("\\*")) {
+                    // Find the comment part and wrap it
+                    int commentStart = line.indexOf("\\*");
+                    if (commentStart >= 0) {
+                        String beforeComment = line.substring(0, commentStart);
+                        String commentPart = line.substring(commentStart);
+                        
+                        processedLines.append(beforeComment)
+                                      .append("<span style='color:#008800'>")
+                                      .append(escapeHtml(commentPart))
+                                      .append("</span>");
+                    } else {
+                        processedLines.append(line);
+                    }
+                } else {
+                    processedLines.append(line);
+                }
+                processedLines.append("\n");
+            }
+            
+            // Remove the extra trailing newline if needed
+            if (processedLines.length() > 0 && !formatted.endsWith("\n")) {
+                processedLines.setLength(processedLines.length() - 1);
+            }
+            
+            formatted = processedLines.toString();
+        }
+        
+        // Other TLA+ syntax highlighting
+        formatted = formatted
             // Highlight module name and keywords
             .replace("STATE_", "<span style='color:#0000FF; font-weight: bold;'>STATE_</span>")
             .replace(" == ", " <span style='color:#0000FF; font-weight: bold;'>==</span> ")
+            .replace(" THEN ", " <span style='color:#0000FF; font-weight: bold;'>THEN</span> ")
+            .replace(" ELSE ", " <span style='color:#0000FF; font-weight: bold;'>ELSE</span> ")
+            .replace(" IF ", " <span style='color:#0000FF; font-weight: bold;'>IF</span> ")
+            .replace(" UNCHANGED ", " <span style='color:#0000FF; font-weight: bold;'>UNCHANGED</span> ")
+            
             // Highlight state variables
             .replace("/\\ door", "/\\ <span style='color:#000088'>door</span>")
             .replace("/\\ timeRemaining", "/\\ <span style='color:#000088'>timeRemaining</span>")
             .replace("/\\ radiation", "/\\ <span style='color:#000088'>radiation</span>")
             .replace("/\\ power", "/\\ <span style='color:#000088'>power</span>")
+            
             // Highlight string values
             .replaceAll("\"([^\"]+)\"", "<span style='color:#880000'>\"$1\"</span>");
             
@@ -481,5 +645,19 @@ public class MicrowaveView extends VerticalLayout {
         
         leftPanel.add(leftPanelTabs, leftPanelContent);
         return leftPanel;
+    }
+
+    /**
+     * Helper method to escape HTML special characters
+     */
+    private String escapeHtml(String html) {
+        if (html == null) {
+            return "";
+        }
+        return html.replace("&", "&amp;")
+                   .replace("<", "&lt;")
+                   .replace(">", "&gt;")
+                   .replace("\"", "&quot;")
+                   .replace("'", "&#39;");
     }
 }
