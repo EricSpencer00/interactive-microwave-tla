@@ -46,7 +46,7 @@ public class FeatureTogglesPanel extends VerticalLayout {
         
         // Add power button toggle
         Checkbox powerButtonToggle = new Checkbox("Power Button");
-        powerButtonToggle.setValue(true); // Default to enabled
+        powerButtonToggle.setValue(false); // Default to disabled
         powerButtonToggle.addValueChangeListener(e -> {
             boolean enabled = e.getValue();
             service.setPowerButtonEnabled(enabled);

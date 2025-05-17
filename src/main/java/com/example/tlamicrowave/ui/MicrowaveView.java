@@ -128,6 +128,7 @@ public class MicrowaveView extends VerticalLayout {
         cancelButton.getStyle().set("background-image", "url('/images/cancel.png')");
         doorButton.getStyle().set("background-image", "url('/images/door.png')");
         powerButton.getStyle().set("background-image", "url('/images/power.png')");
+        powerButton.getStyle().set("display", "none");
 
         Stream.of(incrementButton, startButton, cancelButton, doorButton, powerButton)
             .forEach(btn -> {

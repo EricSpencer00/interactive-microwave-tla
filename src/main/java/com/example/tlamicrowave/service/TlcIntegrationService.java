@@ -461,8 +461,33 @@ public class TlcIntegrationService {
                    .append("EXTENDS Naturals, TLC\n\n")
                    .append("VARIABLES door, time, radiation, power\n\n")
                    .append("CONSTANTS OPEN, CLOSED, ON, OFF\n\n")
-                   .append("(* Trace to be verified *)\n")
-                   .append("Trace == [\n")
+                   .append("(* Trace to be verified *)\n");
+        
+        // Add action comments before the trace definition
+        specBuilder.append("(* Actions that led to each state in the trace *)\n");
+        specBuilder.append("Actions == [\n");
+        specBuilder.append("  n \\in 1..").append(trace.size()).append(" |-> CASE\n");
+        
+        for (int i = 0; i < trace.size(); i++) {
+            Map<String, String> state = trace.get(i);
+            String action = state.get("action");
+            specBuilder.append("    n = ").append(i + 1).append(" -> ");
+            
+            if (action != null) {
+                specBuilder.append("\"").append(action.replace("\"", "\\\"")).append("\"");
+            } else {
+                specBuilder.append("\"No action recorded\"");
+            }
+            
+            if (i < trace.size() - 1) {
+                specBuilder.append("\n");
+            }
+        }
+        
+        specBuilder.append("\n  ]\n\n");
+        
+        // Add the state trace definition
+        specBuilder.append("Trace == [\n")
                    .append("  n \\in 1..").append(trace.size()).append(" |-> CASE\n");
         
         // Add each state of the trace as a case
