@@ -594,11 +594,14 @@ public class MicrowaveView extends VerticalLayout {
         VerticalLayout leftPanel = new VerticalLayout();
         leftPanel.setPadding(false);
         leftPanel.setSpacing(false);
-        leftPanel.setWidth("350px");
+        leftPanel.setMinWidth("350px");
+        leftPanel.setMaxWidth("500px"); // Reasonable maximum width
         leftPanel.getStyle()
             .set("border-right", "1px solid #dee2e6")
             .set("height", "100%")
-            .set("overflow-y", "auto");
+            .set("overflow-y", "auto") // Only vertical scrolling
+            .set("flex-shrink", "0")
+            .set("flex-grow", "1");
         
         // Create tab components
         Tab featuresTab = new Tab("Features");
@@ -611,7 +614,8 @@ public class MicrowaveView extends VerticalLayout {
         // Create content container
         leftPanelContent = new Div();
         leftPanelContent.setWidthFull();
-        leftPanelContent.getStyle().set("height", "100%");
+        leftPanelContent.getStyle()
+            .set("height", "100%");
         
         // Create the content components
         FeatureTogglesPanel featureToggles = new FeatureTogglesPanel(service);

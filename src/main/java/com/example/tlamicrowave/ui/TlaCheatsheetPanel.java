@@ -19,7 +19,9 @@ public class TlaCheatsheetPanel extends VerticalLayout {
     private final Div content;
     
     public TlaCheatsheetPanel() {
-        setWidth("350px");
+        // Remove fixed width so it can be responsive
+        setMinWidth("350px");
+        setMaxWidth("100%");
         setPadding(true);
         setSpacing(true);
         
@@ -29,7 +31,7 @@ public class TlaCheatsheetPanel extends VerticalLayout {
             .set("box-shadow", "2px 0 5px rgba(0,0,0,0.1)")
             .set("z-index", "100")
             .set("height", "100%")
-            .set("overflow-y", "auto");
+            .set("overflow-y", "auto"); // Only vertical scrolling is needed
             
         H3 title = new H3("TLA+ Guide");
         title.getStyle()
@@ -85,20 +87,23 @@ public class TlaCheatsheetPanel extends VerticalLayout {
     
     private Div createTutorialContent() {
         Div tutorialDiv = new Div();
-        tutorialDiv.getStyle().set("padding", "16px 0");
+        tutorialDiv.getStyle()
+            .set("padding", "16px 0");
+        tutorialDiv.setWidthFull();
         
         Accordion accordion = new Accordion();
+        accordion.setWidthFull();
         
         // Introduction
         AccordionPanel introPanel = accordion.add("Introduction",
-            new Html("<div>" +
+            new Html("<div style='max-width: 100%; word-wrap: break-word;'>" +
                 "<p>This interactive microwave demonstrates formal verification using TLA+.</p>" +
                 "<p>The microwave state is continuously checked against safety properties.</p>" +
                 "</div>"));
         
         // How to Use
         AccordionPanel howToUsePanel = accordion.add("How to Use",
-            new Html("<div>" +
+            new Html("<div style='max-width: 100%; word-wrap: break-word;'>" +
                 "<ol>" +
                 "<li><b>Power Button</b>: Turn the microwave on/off</li>" +
                 "<li><b>+3s Button</b>: Add 3 seconds to cooking time</li>" +
@@ -110,7 +115,7 @@ public class TlaCheatsheetPanel extends VerticalLayout {
         
         // Feature Toggles
         AccordionPanel togglesPanel = accordion.add("Feature Toggles",
-            new Html("<div>" +
+            new Html("<div style='max-width: 100%; word-wrap: break-word;'>" +
                 "<ul>" +
                 "<li><b>Power Button Toggle</b>: Enable/disable the power button</li>" +
                 "<li><b>Dangerous Mode</b>: Allow safety violations (radiation with door open)</li>" +
@@ -119,21 +124,21 @@ public class TlaCheatsheetPanel extends VerticalLayout {
         
         // Safety Properties
         AccordionPanel safetyPanel = accordion.add("Safety Properties",
-            new Html("<div>" +
+            new Html("<div style='max-width: 100%; word-wrap: break-word;'>" +
                 "<p>The main safety property is: <code>Safe == ~(radiation = ON /\\ door = OPEN)</code></p>" +
                 "<p>This ensures radiation cannot be on while the door is open.</p>" +
                 "</div>"));
         
         // Verification
         AccordionPanel verificationPanel = accordion.add("Verification",
-            new Html("<div>" +
+            new Html("<div style='max-width: 100%; word-wrap: break-word;'>" +
                 "<p>Click the \"Verify with TLC\" button to check if your actions violated any safety properties.</p>" +
                 "<p>The TLA+ specification adapts based on enabled features.</p>" +
                 "</div>"));
         
         // Try This
         AccordionPanel tryThisPanel = accordion.add("Try This",
-            new Html("<div>" +
+            new Html("<div style='max-width: 100%; word-wrap: break-word;'>" +
                 "<ol>" +
                 "<li>Set time, start cooking, then open door (radiation should stop)</li>" +
                 "<li>Enable dangerous mode, then try the same sequence (radiation can stay on!)</li>" +
@@ -150,13 +155,16 @@ public class TlaCheatsheetPanel extends VerticalLayout {
     
     private Div createCheatsheetContent() {
         Div cheatsheetDiv = new Div();
-        cheatsheetDiv.getStyle().set("padding", "16px 0");
+        cheatsheetDiv.getStyle()
+            .set("padding", "16px 0");
+        cheatsheetDiv.setWidthFull();
         
         Accordion accordion = new Accordion();
+        accordion.setWidthFull();
         
         // Basic Syntax
         AccordionPanel basicSyntaxPanel = accordion.add("Basic Syntax",
-            new Html("<div style='font-family: monospace;'>" +
+            new Html("<div style='font-family: monospace; word-wrap: break-word; max-width: 100%;'>" +
                 "<p><b>Module Declaration:</b><br>" +
                 "<code>---- MODULE ModuleName ----</code></p>" +
                 "<p><b>Imports:</b><br>" +
@@ -171,7 +179,7 @@ public class TlaCheatsheetPanel extends VerticalLayout {
         
         // Operators
         AccordionPanel operatorsPanel = accordion.add("Operators",
-            new Html("<div style='font-family: monospace;'>" +
+            new Html("<div style='font-family: monospace; word-wrap: break-word; max-width: 100%;'>" +
                 "<p><b>Logical:</b><br>" +
                 "<code>/\\ (and), \\/ (or), ~ (not), => (implies)</code></p>" +
                 "<p><b>Equality:</b><br>" +
@@ -184,7 +192,7 @@ public class TlaCheatsheetPanel extends VerticalLayout {
         
         // State Predicates
         AccordionPanel statePredicatesPanel = accordion.add("State Predicates",
-            new Html("<div style='font-family: monospace;'>" +
+            new Html("<div style='font-family: monospace; word-wrap: break-word; max-width: 100%;'>" +
                 "<p><b>Init Predicate:</b><br>" +
                 "<code>Init == x = 0 /\\ y = FALSE</code></p>" +
                 "<p><b>Next-State Relation:</b><br>" +
@@ -195,7 +203,7 @@ public class TlaCheatsheetPanel extends VerticalLayout {
         
         // Specifications
         AccordionPanel specificationsPanel = accordion.add("Specifications",
-            new Html("<div style='font-family: monospace;'>" +
+            new Html("<div style='font-family: monospace; word-wrap: break-word; max-width: 100%;'>" +
                 "<p><b>Safety Property:</b><br>" +
                 "<code>Safe == x > 0 => y = TRUE</code></p>" +
                 "<p><b>Liveness Property:</b><br>" +
@@ -206,7 +214,7 @@ public class TlaCheatsheetPanel extends VerticalLayout {
         
         // Microwave Example
         AccordionPanel microwaveExamplePanel = accordion.add("Microwave Example",
-            new Html("<div style='font-family: monospace;'>" +
+            new Html("<div style='font-family: monospace; word-wrap: break-word; max-width: 100%;'>" +
                 "<p><b>Variables:</b><br>" +
                 "<code>VARIABLES door, time, radiation, power</code></p>" +
                 "<p><b>Constants:</b><br>" +
@@ -223,7 +231,7 @@ public class TlaCheatsheetPanel extends VerticalLayout {
         
         // TLC Commands
         AccordionPanel tlcCommandsPanel = accordion.add("TLC Commands",
-            new Html("<div style='font-family: monospace;'>" +
+            new Html("<div style='font-family: monospace; word-wrap: break-word; max-width: 100%;'>" +
                 "<p><b>Run TLC:</b><br>" +
                 "<code>tlc ModuleName</code></p>" +
                 "<p><b>Config File:</b><br>" +

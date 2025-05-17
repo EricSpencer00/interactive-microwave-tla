@@ -16,7 +16,9 @@ public class FeatureTogglesPanel extends VerticalLayout {
     public FeatureTogglesPanel(MicrowaveService service) {
         this.service = service;
         
-        setWidth("250px");
+        // Replace fixed width with min/max width for responsiveness
+        setMinWidth("250px");
+        setMaxWidth("100%");
         setPadding(true);
         setSpacing(true);
         
@@ -25,7 +27,8 @@ public class FeatureTogglesPanel extends VerticalLayout {
             .set("border-right", "1px solid #dee2e6")
             .set("box-shadow", "2px 0 5px rgba(0,0,0,0.1)")
             .set("z-index", "100")
-            .set("height", "100%");
+            .set("height", "100%")
+            .set("overflow-y", "auto"); // Only vertical scrolling is needed
             
         H3 title = new H3("Feature Toggles");
         title.getStyle()
@@ -44,13 +47,18 @@ public class FeatureTogglesPanel extends VerticalLayout {
             .set("margin", "8px 0");
         add(separator);
         
+        // Create container for toggles 
+        Div togglesContainer = new Div();
+        togglesContainer.setWidthFull();
+        
         // Add power button toggle
-        Checkbox powerButtonToggle = new Checkbox("Power Button");
+        Checkbox powerButtonToggle = new Checkbox("🔌 Power Button");
         powerButtonToggle.setValue(false); // Default to disabled
         powerButtonToggle.addValueChangeListener(e -> {
             boolean enabled = e.getValue();
             service.setPowerButtonEnabled(enabled);
         });
+        powerButtonToggle.setWidthFull();
         styleToggle(powerButtonToggle);
         
         // Add dangerous mode toggle
@@ -60,9 +68,13 @@ public class FeatureTogglesPanel extends VerticalLayout {
             boolean dangerous = e.getValue();
             service.setDangerousMode(dangerous);
         });
+        dangerousModeToggle.setWidthFull();
         styleToggle(dangerousModeToggle);
         
-        add(powerButtonToggle, dangerousModeToggle);
+        // Add toggles to container
+        togglesContainer.add(powerButtonToggle, dangerousModeToggle);
+        
+        add(togglesContainer);
     }
     
     private void styleToggle(Checkbox toggle) {
@@ -72,6 +84,9 @@ public class FeatureTogglesPanel extends VerticalLayout {
             .set("background-color", "#ffffff")
             .set("border-radius", "4px")
             .set("border", "1px solid #ced4da")
-            .set("width", "100%");
+            .set("display", "block") // Make checkbox take full width
+            .set("overflow", "hidden") // Prevent overflow
+            .set("text-overflow", "ellipsis") // Add ellipsis for text that doesn't fit
+            .set("white-space", "nowrap"); // Keep text on one line
     }
 } 
