@@ -326,41 +326,19 @@ public class MicrowaveView extends VerticalLayout {
                     
                     Div entry = new Div();
                     
-                    // Special case for action marker lines
+                    // Handle action marker lines
                     if (logEntry.trim().startsWith("\\* <") && logEntry.contains("line") && logEntry.contains("col") && logEntry.contains(">")) {
-                        // Extract the action name for highlighting
-                        String actionName = "";
-                        try {
-                            int startPos = logEntry.indexOf("<") + 1;
-                            int endPos = logEntry.indexOf(" ", startPos);
-                            if (endPos > startPos) {
-                                actionName = logEntry.substring(startPos, endPos);
-                            }
-                        } catch (Exception e) {
-                            // If parsing fails, just use the whole line
-                        }
-                        
-                        if (!actionName.isEmpty()) {
-                            // Format with the action name highlighted
-                            String beforeAction = escapeHtml(logEntry.substring(0, logEntry.indexOf("<") + 1));
-                            String afterAction = escapeHtml(logEntry.substring(logEntry.indexOf(actionName) + actionName.length()));
-                            
-                            entry.getElement().setProperty("innerHTML", 
-                                "<span style='color:#008800'>" + beforeAction + 
-                                "<span style='color:#0000CC; font-weight:bold'>" + actionName + "</span>" + 
-                                afterAction + "</span>");
-                        } else {
-                            // Fallback if we couldn't extract the action name
-                            entry.getElement().setProperty("innerHTML", 
-                                "<span style='color:#008800; font-style:italic'>" + escapeHtml(logEntry) + "</span>");
-                        }
+                        // Format action marker
+                        formatActionMarker(entry, logEntry);
                     }
-                    // Set raw content for comment-only lines to ensure they display properly
+                    // Handle pure comment lines
                     else if (logEntry.trim().startsWith("(*") || logEntry.trim().startsWith("\\*")) {
                         String safeHtml = escapeHtml(logEntry);
                         entry.getElement().setProperty("innerHTML", 
                             "<span style='color:#008800'>" + safeHtml + "</span>");
-                    } else {
+                    } 
+                    // Handle normal state entries
+                    else {
                         entry.getElement().setProperty("innerHTML", formatTlaLogEntry(logEntry));
                     }
                     
@@ -377,41 +355,19 @@ public class MicrowaveView extends VerticalLayout {
                     if (logEntry != null && !logEntry.trim().isEmpty()) {
                         Div entry = new Div();
                         
-                        // Special case for action marker lines
+                        // Handle action marker lines
                         if (logEntry.trim().startsWith("\\* <") && logEntry.contains("line") && logEntry.contains("col") && logEntry.contains(">")) {
-                            // Extract the action name for highlighting
-                            String actionName = "";
-                            try {
-                                int startPos = logEntry.indexOf("<") + 1;
-                                int endPos = logEntry.indexOf(" ", startPos);
-                                if (endPos > startPos) {
-                                    actionName = logEntry.substring(startPos, endPos);
-                                }
-                            } catch (Exception e) {
-                                // If parsing fails, just use the whole line
-                            }
-                            
-                            if (!actionName.isEmpty()) {
-                                // Format with the action name highlighted
-                                String beforeAction = escapeHtml(logEntry.substring(0, logEntry.indexOf("<") + 1));
-                                String afterAction = escapeHtml(logEntry.substring(logEntry.indexOf(actionName) + actionName.length()));
-                                
-                                entry.getElement().setProperty("innerHTML", 
-                                    "<span style='color:#008800'>" + beforeAction + 
-                                    "<span style='color:#0000CC; font-weight:bold'>" + actionName + "</span>" + 
-                                    afterAction + "</span>");
-                            } else {
-                                // Fallback if we couldn't extract the action name
-                                entry.getElement().setProperty("innerHTML", 
-                                    "<span style='color:#008800; font-style:italic'>" + escapeHtml(logEntry) + "</span>");
-                            }
+                            // Format action marker
+                            formatActionMarker(entry, logEntry);
                         }
-                        // Set raw content for comment-only lines to ensure they display properly
+                        // Handle pure comment lines
                         else if (logEntry.trim().startsWith("(*") || logEntry.trim().startsWith("\\*")) {
                             String safeHtml = escapeHtml(logEntry);
                             entry.getElement().setProperty("innerHTML", 
                                 "<span style='color:#008800'>" + safeHtml + "</span>");
-                        } else {
+                        } 
+                        // Handle normal state entries
+                        else {
                             entry.getElement().setProperty("innerHTML", formatTlaLogEntry(logEntry));
                         }
                         
@@ -427,11 +383,48 @@ public class MicrowaveView extends VerticalLayout {
     }
     
     /**
+     * Format an action marker line with consistent styling
+     */
+    private void formatActionMarker(Div entry, String logEntry) {
+        // Extract the action name for highlighting
+        String actionName = "";
+        try {
+            int startPos = logEntry.indexOf("<") + 1;
+            int endPos = logEntry.indexOf(" ", startPos);
+            if (endPos > startPos) {
+                actionName = logEntry.substring(startPos, endPos);
+            }
+        } catch (Exception e) {
+            // If parsing fails, just use the whole line
+        }
+        
+        if (!actionName.isEmpty()) {
+            // Format with the action name highlighted
+            String beforeAction = escapeHtml(logEntry.substring(0, logEntry.indexOf("<") + 1));
+            String afterAction = escapeHtml(logEntry.substring(logEntry.indexOf(actionName) + actionName.length()));
+            
+            entry.getElement().setProperty("innerHTML", 
+                "<span style='color:#008800'>" + beforeAction + 
+                "<span style='color:#0000CC; font-weight:bold'>" + actionName + "</span>" + 
+                afterAction + "</span>");
+        } else {
+            // Fallback if we couldn't extract the action name
+            entry.getElement().setProperty("innerHTML", 
+                "<span style='color:#008800'>" + escapeHtml(logEntry) + "</span>");
+        }
+    }
+
+    /**
      * Format TLA+ log entries with syntax highlighting
      */
     private String formatTlaLogEntry(String logEntry) {
         if (logEntry == null) {
             return "";
+        }
+        
+        // Skip comment-only lines - they'll be handled separately in updateLogDisplay
+        if (logEntry.trim().startsWith("\\*") || logEntry.trim().startsWith("(*")) {
+            return logEntry;
         }
         
         // Basic syntax highlighting for TLA+ 
