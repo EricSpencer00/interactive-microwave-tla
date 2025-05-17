@@ -318,18 +318,48 @@ public class MicrowaveView extends VerticalLayout {
         if (!allLogs.isEmpty()) {
             if (showAllLogs) {
                 allLogs.forEach(log -> {
-                    Div entry = new Div(log);
-                    entry.getStyle().set("margin", "0.2em 0");
+                    Div entry = new Div();
+                    entry.getElement().setProperty("innerHTML", formatTlaLogEntry(log));
+                    entry.getStyle()
+                        .set("margin", "0.2em 0")
+                        .set("font-family", "monospace")
+                        .set("white-space", "pre-wrap");
                     verificationPanel.add(entry);
                 });
             } else {
                 if (currentLogIndex < allLogs.size()) {
-                    Div entry = new Div(allLogs.get(currentLogIndex));
-                    entry.getStyle().set("margin", "0.2em 0");
+                    Div entry = new Div();
+                    entry.getElement().setProperty("innerHTML", formatTlaLogEntry(allLogs.get(currentLogIndex)));
+                    entry.getStyle()
+                        .set("margin", "0.2em 0")
+                        .set("font-family", "monospace")
+                        .set("white-space", "pre-wrap");
                     verificationPanel.add(entry);
                 }
             }
         }
+    }
+    
+    /**
+     * Format TLA+ log entries with syntax highlighting
+     */
+    private String formatTlaLogEntry(String logEntry) {
+        // Basic syntax highlighting for TLA+ 
+        String formatted = logEntry
+            // Highlight comments
+            .replace("\\*", "<span style='color:#008800'>\\*</span>")
+            // Highlight module name and keywords
+            .replace("STATE_", "<span style='color:#0000FF; font-weight: bold;'>STATE_</span>")
+            .replace(" == ", " <span style='color:#0000FF; font-weight: bold;'>==</span> ")
+            // Highlight state variables
+            .replace("/\\ door", "/\\ <span style='color:#000088'>door</span>")
+            .replace("/\\ timeRemaining", "/\\ <span style='color:#000088'>timeRemaining</span>")
+            .replace("/\\ radiation", "/\\ <span style='color:#000088'>radiation</span>")
+            .replace("/\\ power", "/\\ <span style='color:#000088'>power</span>")
+            // Highlight string values
+            .replaceAll("\"([^\"]+)\"", "<span style='color:#880000'>\"$1\"</span>");
+            
+        return formatted;
     }
 
     private void updateUI() {

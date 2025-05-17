@@ -249,6 +249,8 @@ public class MicrowaveService {
                  .append("/\\ time' = time + 3\n\n")
                  .append("Start ==\n")
                  .append("/\\ time > 0\n")
+                 .append("/\\ door = CLOSED\n")
+                 .append("/\\ power = ON\n")
                  .append("/\\ radiation' = ON\n")
                  .append("/\\ UNCHANGED <<door, time, power>>\n\n")
                  .append("Tick ==\n")
@@ -274,7 +276,7 @@ public class MicrowaveService {
                  .append("Spec == Init /\\ [][Next]_<<door,time,radiation,power>>\n\n")
                  .append("====\n");
             } else {
-                // Version without power
+                // Simplified spec without power when power button is disabled
                 b.append("---- MODULE Microwave ----\n")
                  .append("EXTENDS Integers, TLC\n\n")
                  .append("VARIABLES door, time, radiation\n\n")
@@ -288,6 +290,7 @@ public class MicrowaveService {
                  .append("/\\ time' = time + 3\n\n")
                  .append("Start ==\n")
                  .append("/\\ time > 0\n")
+                 .append("/\\ door = CLOSED\n")
                  .append("/\\ radiation' = ON\n")
                  .append("/\\ UNCHANGED <<door, time>>\n\n")
                  .append("Tick ==\n")
@@ -313,20 +316,55 @@ public class MicrowaveService {
                  .append("Spec == Init /\\ [][Next]_<<door,time,radiation>>\n\n")
                  .append("====\n");
             }
+            verificationLogService.addLogEntry(b.toString());
         }
-        b.append("(* State: ").append(action).append(" *)\n");
-        b.append("/\\ door = ").append(state.getDoor()).append("\n");
-        b.append("/\\ time = ").append(state.getTimeRemaining()).append("\n");
-        b.append("/\\ radiation = ").append(state.getRadiation()).append("\n");
+        
+        // Format state change in TLA+ format
+        StringBuilder stateBuilder = new StringBuilder();
+        
+        // Add the action as a comment in TLA+ format
+        stateBuilder.append("\\* <").append(action);
+        
+        // Add dummy line and column numbers for consistency
+        stateBuilder.append(" line ").append(getLineNumber(action)).append(", col 3 to line ");
+        stateBuilder.append(getLineNumber(action) + 3).append(", col 36 of module Microwave>\n");
+        
+        // Create a state name based on the number of logs
+        int stateNumber = verificationLogService.getVerificationLog().size();
+        stateBuilder.append("STATE_").append(stateNumber).append(" ==\n");
+        
+        // Add state values in TLA+ format
+        stateBuilder.append("/\\ door = \"").append(state.getDoor().toString().toLowerCase()).append("\"\n");
+        stateBuilder.append("/\\ timeRemaining = ").append(state.getTimeRemaining()).append("\n");
+        stateBuilder.append("/\\ radiation = \"").append(state.getRadiation().toString().toLowerCase()).append("\"");
+        
         if (powerButtonEnabled) {
-            b.append("/\\ power = ").append(state.getPower()).append("\n");
+            stateBuilder.append("\n/\\ power = \"").append(state.getPower().toString().toLowerCase()).append("\"");
         }
-        b.append("\n");
         
-        // Add new state to log
-        verificationLogService.addLogEntry(b.toString());
+        verificationLogService.addLogEntry(stateBuilder.toString());
         
-        log.debug(b.toString());
+        if (log.isDebugEnabled()) {
+            log.debug(stateBuilder.toString());
+        }
+    }
+    
+    /**
+     * Get a consistent line number for a given action for display purposes
+     */
+    private int getLineNumber(String action) {
+        // Map each action to a consistent line number for display
+        switch (action) {
+            case "Initial": return 10;
+            case "TogglePower": return 15;
+            case "IncrementTime": return 20;
+            case "Start": return 25;
+            case "Tick": return 30;
+            case "Cancel": return 35;
+            case "OpenDoor": return 40;
+            case "CloseDoor": return 45;
+            default: return 50;
+        }
     }
 
     private void pushUpdate() {
