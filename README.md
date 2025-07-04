@@ -1,5 +1,7 @@
 # TLA+ Microwave Simulator
 
+[https://espencer.me/projects/2025/interactive-microwave-tla/](https://espencer.me/projects/2025/interactive-microwave-tla/)
+
 This is a Spring Boot + Vaadin application that simulates a microwave oven with TLA+ verification. The application demonstrates state machine behavior and safety properties.
 
 ## Features
