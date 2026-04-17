@@ -1,0 +1,198 @@
+/* Scoped so the bundle plays nicely when embedded in the ai4fm Sphinx theme. */
+.mw-app, .mw-app * {
+  box-sizing: border-box;
+}
+
+.mw-app {
+  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  color: #1a1a1a;
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 1.25rem;
+  line-height: 1.45;
+}
+
+.mw-header h1 {
+  margin: 0 0 0.25rem 0;
+  font-size: 1.6rem;
+}
+.mw-header p {
+  margin: 0 0 1.25rem 0;
+  color: #444;
+}
+
+.mw-layout {
+  display: grid;
+  grid-template-columns: 220px minmax(0, 1fr) 320px;
+  gap: 1rem;
+}
+@media (max-width: 900px) {
+  .mw-layout { grid-template-columns: 1fr; }
+}
+
+.mw-sidebar, .mw-main, .mw-right {
+  background: #fafafa;
+  border: 1px solid #e3e3e3;
+  border-radius: 10px;
+  padding: 1rem;
+}
+
+/* Toggles / checker panel */
+.mw-toggles h3 {
+  margin: 0 0 0.5rem 0;
+  font-size: 0.9rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #555;
+}
+.mw-check {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0.25rem 0 0.75rem 0;
+  font-size: 0.9rem;
+}
+.mw-check-result { font-size: 0.9rem; margin: 0.25rem 0; }
+.mw-check-hint { font-size: 0.8rem; color: #666; margin: 0.5rem 0 0 0; }
+.mw-check-result .good { color: #1f7a1f; }
+.mw-check-result .bad { color: #b12a2a; }
+
+/* Device */
+.mw-device {
+  display: grid;
+  gap: 0.75rem;
+  padding: 1rem;
+  background: #1b1b1f;
+  border-radius: 12px;
+  color: #fafafa;
+}
+.mw-screen {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #0b0b0d;
+  color: #c7f59b;
+  font-family: ui-monospace, "SF Mono", monospace;
+  font-variant-numeric: tabular-nums;
+  padding: 0.75rem 1rem;
+  border-radius: 6px;
+  box-shadow: inset 0 0 0 1px #2a2a2f;
+}
+.mw-time { font-size: 2rem; font-weight: 600; }
+.mw-unit { font-size: 0.9rem; margin-left: 0.25rem; opacity: 0.75; }
+.mw-indicators { display: flex; gap: 0.5rem; font-size: 0.7rem; letter-spacing: 0.08em; }
+.mw-dot {
+  padding: 0.15rem 0.4rem;
+  border: 1px solid #2e2e33;
+  border-radius: 999px;
+  color: #555;
+}
+.mw-dot.on { background: #2d6a4f; color: #e7fbee; border-color: #2d6a4f; }
+
+.mw-cavity {
+  position: relative;
+  height: 140px;
+  border-radius: 8px;
+  background: #0b0b0d;
+  overflow: hidden;
+  border: 1px solid #2a2a2f;
+}
+.mw-cavity.open .mw-door {
+  transform: translateX(92%);
+}
+.mw-door {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, #2a2a2f 0%, #1b1b1f 100%);
+  transition: transform 300ms ease;
+  border-right: 2px solid #444;
+}
+.mw-glow {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse at center, rgba(255,180,80,0.0), rgba(255,180,80,0.0));
+  transition: background 200ms linear;
+}
+.mw-device.is-radiating .mw-glow {
+  background: radial-gradient(ellipse at center, rgba(255,180,80,0.75), rgba(255,180,80,0.0) 70%);
+  animation: mw-pulse 1.2s ease-in-out infinite;
+}
+@keyframes mw-pulse {
+  0%, 100% { opacity: 0.85; }
+  50%      { opacity: 0.55; }
+}
+
+.mw-violation {
+  background: #5a1515;
+  color: #ffe3e3;
+  padding: 0.5rem 0.75rem;
+  border-radius: 6px;
+  font-weight: 600;
+}
+
+/* Controls */
+.mw-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+}
+.mw-btn {
+  font: inherit;
+  padding: 0.45rem 0.9rem;
+  border: 1px solid #bbb;
+  background: #fff;
+  border-radius: 6px;
+  cursor: pointer;
+}
+.mw-btn:hover:not(:disabled) { background: #f2f2f2; }
+.mw-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.mw-btn-secondary {
+  margin-top: 0.25rem;
+  display: inline-block;
+  background: #f0f0f0;
+}
+
+/* Trace */
+.mw-trace { font-size: 0.88rem; }
+.mw-trace-header {
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+  color: #333;
+}
+.mw-trace-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  max-height: 520px;
+  overflow-y: auto;
+}
+.mw-trace-row {
+  display: grid;
+  grid-template-columns: 140px 1fr;
+  gap: 0.5rem;
+  padding: 0.25rem 0.35rem;
+  border-bottom: 1px solid #ececec;
+  font-family: ui-monospace, "SF Mono", monospace;
+  font-size: 0.8rem;
+}
+.mw-trace-row.stutter { opacity: 0.55; font-style: italic; }
+.mw-trace-row.violation { background: #fdecea; }
+.mw-trace-name { color: #444; white-space: nowrap; }
+.mw-trace-state { color: #222; word-break: break-word; }
+
+/* Cheatsheet */
+.mw-cheatsheet {
+  margin-top: 1rem;
+  background: #fff;
+  border: 1px solid #e3e3e3;
+  border-radius: 8px;
+  padding: 0.5rem 0.75rem;
+}
+.mw-cheatsheet summary {
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+.mw-cheatsheet-body { font-size: 0.85rem; }
+.mw-cheatsheet-body code { background: #eef; padding: 0 0.2rem; border-radius: 3px; }
