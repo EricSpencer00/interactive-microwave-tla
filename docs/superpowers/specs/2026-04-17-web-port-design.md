@@ -77,32 +77,32 @@ Each `Action` body is the *direct* translation of the corresponding `Microwave.t
 
 ## Stuttering fix
 
-### Diagnosis
+### Diagnosis (post-paper)
 
-In standard TLA+ semantics, `Spec == Init /\ [][Next]_vars` unfolds to: at every step, either `Next` holds (a real action) **or** `vars' = vars` (a stutter). Safety properties are invariant under stuttering because `[Next]_vars` includes the identity step.
+After reading Laufer, Mertin, Thiruvathukal (arXiv:2407.21152, Sec. IV.C), stuttering in this spec is not a trace-display nicety — it's a **liveness hazard**. The paper introduces:
 
-The current web/Vaadin simulator:
+- A liveness property `HeatLiveness == (radiation = ON) ⇝ (radiation = OFF)` (Exercise 3a).
+- A failure scenario (Figure 7) where `Spec == Init /\ [][Next]_vars` alone admits a behavior in which the radiating microwave stutters forever, never ticks, and radiation persists indefinitely — food catches fire.
+- The fix (Exercise 3b): add weak fairness on `Tick`, so the spec becomes `Spec == Init /\ [][Next]_vars /\ WF_vars(Tick)`.
 
-1. Never emits a stutter in its trace log — every logged row corresponds to an enabled action.
-2. Treats "nothing happened this tick" as invisible rather than a legal TLA+ step.
-3. Renders `[Next]_vars` cheatsheet content but does not actually realize stuttering in the animation.
-
-This is the divergence from the paper's formal presentation: a faithful runtime must acknowledge stutter steps explicitly.
+The current web/Vaadin simulator does not model any of this: it neither admits stuttering nor declares the liveness property nor enforces fairness. It *accidentally* behaves correctly because its Java tick loop unconditionally ticks — but that behavior is not documented, not toggleable, and not pedagogically useful.
 
 ### Fix
 
-Two complementary changes:
+Four complementary changes:
 
-1. **`stutter.ts`** adds an explicit `Stutter` pseudo-action with `enabled = always`, `step(v) = v`, `name = "(stutter)"`. The enumerated `Next` used by the trace view is `[Next]_vars = Next ∪ {Stutter}`. The BFS checker uses plain `Next` (stuttering adds nothing reachable), but the interactive trace view and the logged `\* <Action>` comments include stutters.
-2. **Timer stutter emission** — currently the backend's `@Scheduled` tick silently no-ops when radiation is OFF. The ported `tickLoop` emits an explicit `(stutter)` log entry on every tick where no action is taken, matching `[Next]_vars`. A UI toggle **"Show stutter steps"** (default on) lets users compress them if the log gets noisy.
+1. **`Microwave.tla`** grows two definitions: `HeatLiveness` and `Spec` is strengthened to include `WF_<<door,time,radiation,power>>(Tick)`.
+2. **`web/src/checker/stutter.ts`** — explicit `Stutter` pseudo-action realizing `[Next]_vars = Next ∪ {Stutter}`. Used by the UI and engine, not by the reachability check (stuttering adds no new reachable states).
+3. **`web/src/checker/liveness.ts`** — runtime detector for a "stutter trap": N consecutive stutter rows while `radiation = ON`. Flips a liveness-violated signal in the UI.
+4. **`web/src/sim/engine.ts`** — tick loop has a `wfTick` flag. With fairness on (default, matching the paper's fixed spec), Tick fires whenever enabled. With fairness off, the tick loop may emit a stutter step instead, reproducing Figure 7. A UI toggle switches between modes so students can see the liveness failure and its fix side by side.
 
 ### Verification
 
-A unit test in `web/src/checker/__tests__/stutter.test.ts` asserts:
+Unit tests assert:
 
-- `Safe` is closed under `Stutter` (`Safe(v) ⇒ Safe(Stutter.step(v))`).
-- Every real `Next` successor of a safe state is safe (re-verifies `Microwave.tla`'s `Safe` invariant in TS).
-- `[Next]_vars` always has at least the stutter step enabled (behaviors never deadlock in the TLA+ sense).
+- `Safe` is closed under `Stutter` (sanity for safety properties).
+- `[Next]_vars` always has at least the stutter step enabled.
+- The liveness detector flips when 3+ consecutive stutter rows land while radiating, and resets when radiation turns off.
 
 ## Data flow
 
@@ -150,6 +150,6 @@ I will not push without explicit confirmation — both PRs are user-visible acti
 
 ## Risks & open questions
 
-- **Arxiv 2407.21152 not fetched this session** (WebFetch deferred). If the paper defines stuttering more strictly (e.g., distinguishing finite vs infinite stuttering for termination), the `stutter.ts` design may need extension. Flagging for user to confirm after reading the draft.
 - **Java code is left in place.** Some users may expect it removed; leaving it keeps the Spring Boot dev path working and avoids a risky, unrelated deletion.
-- **Asset duplication** — the built bundle lives in two repos. Acceptable for a Sphinx post; re-run `make web && cp -r …` on each microwave release.
+- **Asset duplication** — the built bundle lives in two repos. Acceptable for a Sphinx post; re-run `make web && rsync …` on each microwave release.
+- **Liveness check is a runtime heuristic, not a full temporal-logic model checker.** It detects a fixed window of stutter-while-radiating as a witness of `HeatLiveness` failure. A real check would explore infinite behaviors; TLC does this, we don't. Adequate for a teaching demo.

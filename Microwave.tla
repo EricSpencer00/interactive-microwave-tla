@@ -50,9 +50,19 @@ OpenDoor ==
 
 Next == TogglePower \/ IncrementTime \/ Start \/ Tick \/ Cancel \/ CloseDoor \/ OpenDoor
 
+\* Safety invariant: radiation must never be ON with the door OPEN.
 Safe == ~(radiation = ON /\ door = OPEN)
 
-Spec == Init /\ [][Next]_<<door,time,radiation,power>>
+\* Liveness property (Laufer, Mertin, Thiruvathukal, arXiv:2407.21152, Sec. IV.C):
+\* whenever the microwave is radiating, it must eventually stop. Without this
+\* property, stuttering lets the microwave radiate forever, overheating.
+HeatLiveness == (radiation = ON) ~> (radiation = OFF)
+
+\* Top-level specification with weak fairness on Tick. Without WF_vars(Tick),
+\* the [Next]_vars form admits an infinite stuttering behavior from a radiating
+\* state, violating HeatLiveness. Weak fairness forces Tick to eventually fire
+\* whenever it is continuously enabled.
+Spec == Init /\ [][Next]_<<door,time,radiation,power>> /\ WF_<<door,time,radiation,power>>(Tick)
 
 (* Trace of states from execution - last 20 states only *)
 Trace ==

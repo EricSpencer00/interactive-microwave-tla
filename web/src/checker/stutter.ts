@@ -1,14 +1,17 @@
-// The stuttering fix.
+// Stuttering steps for the Microwave spec.
 //
-// Spec == Init /\ [][Next]_vars
+// Spec == Init /\ [][Next]_vars /\ WF_vars(Tick)
 //
 // The [Next]_vars square-bracket form admits two kinds of step:
 //   1. A Next step (one of the action disjuncts), OR
 //   2. A stuttering step where vars' = vars.
 //
-// The previous web simulator only ever emitted (1), so users never saw
-// stuttering. This module makes (2) explicit as a pseudo-action so the
-// trace view and engine can emit it when no real action fires.
+// Per Laufer/Mertin/Thiruvathukal (arXiv:2407.21152, Sec. IV.C), stuttering
+// is not a trace-display nicety — it is a *liveness hazard*. Without
+// WF_vars(Tick), a radiating microwave can stutter forever, violating
+// HeatLiveness ("radiation = ON ~> radiation = OFF"). This module exposes
+// Stutter as a first-class pseudo-action; the engine and UI combine it with
+// the fairness toggle to reproduce and resolve the paper's Figure 7 failure.
 
 import { Vars } from '../model/state';
 import { Action, Next } from './spec';
