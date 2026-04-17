@@ -63,6 +63,7 @@ frontend/package-lock.json
 frontend/yarn.lock
 node_modules/
 package-lock.json
+!web/package-lock.json
 webpack.generated.js
 webpack.config.js
 tsconfig.json
