@@ -4,6 +4,11 @@
 
 This is a Spring Boot + Vaadin application that simulates a microwave oven with TLA+ verification. The application demonstrates state machine behavior and safety properties.
 
+## Two ways to run it
+
+- **Server version** (this README) — Spring Boot + Vaadin, runs on localhost, uses the real TLC JAR for verification. Described below.
+- **Browser version** — see [`web/`](web/). A standalone Vite + React + TypeScript build with a JS-native TLA+ checker that is a literal transcription of [`Microwave.tla`](Microwave.tla). Ships as a static bundle and is embedded on [ai4fm.cs.luc.edu](https://ai4fm.cs.luc.edu) as a blog post. Build with `make web`. Design notes and the stuttering fix are in [`docs/superpowers/specs/2026-04-17-web-port-design.md`](docs/superpowers/specs/2026-04-17-web-port-design.md).
+
 ## Features
 
 - Microwave state simulation with door, radiation, power, and timer
